@@ -1,9 +1,18 @@
 vim.g.mapleader = " "
 vim.keymap.set("n", "<leader>pv", vim.cmd.Ex)
-vim.keymap.set('n', '<leader>ev', function()
-  vim.cmd("cd $LOCALAPPDATA/nvim") -- Change working directory
-  vim.cmd("edit $LOCALAPPDATA/nvim/") -- Open the folder
-end, { noremap = true, silent = true })
+
+-- OLD CONFIGURATION TO GO TO NVIM CONFIG
+-- vim.keymap.set('n', '<leader>ev', function()
+--   vim.cmd("cd $LOCALAPPDATA/nvim") -- Change working directory
+--   vim.cmd("edit $LOCALAPPDATA/nvim/") -- Open the folder
+-- end, { noremap = true, silent = true })
+
+-- GO TO NVIM CONFIG VIA TELESCOPE
+vim.keymap.set('n', '<leader>ev', function ()
+    require("telescope.builtin").find_files({
+        cwd = vim.fn.expand("$LOCALAPPDATA\nvim"),
+    })
+end, {noremap = true, silent = true})
 
 --CHANGING DIRECTORY WORKING 
 vim.keymap.set('n', '<leader>cd', function()
