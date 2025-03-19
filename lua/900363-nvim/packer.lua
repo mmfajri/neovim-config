@@ -19,7 +19,10 @@ return require('packer').startup(function(use)
     use('tpope/vim-fugitive')
     use {
         'nvim-treesitter/nvim-treesitter',
-        run = 'TSUpdate'
+        run = function()
+            local ts_update = require('nvim-treesitter.install').update({ with_sync = true })
+            ts_update()
+        end,
     }
 	use 'mbbill/undotree'
 	use({'hrsh7th/nvim-cmp'})

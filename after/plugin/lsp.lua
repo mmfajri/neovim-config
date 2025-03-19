@@ -50,3 +50,15 @@ cmp.setup({
     ['<C-Space>'] = cmp.mapping.complete(), -- Manually trigger completion
   }),
 })
+
+vim.api.nvim_create_autocmd("BufWritePre", {
+    pattern = "*",
+    callback = function()
+        vim.lsp.buf.format({
+            async = false, --Ensure formatting complete before saving 
+            filter = function(client)
+                return client.server_capabilities.documentFormattingProvider
+            end
+        })
+    end,
+})
