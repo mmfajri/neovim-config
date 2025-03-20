@@ -44,10 +44,10 @@ cmp.setup({
         end,
     },
     mapping = cmp.mapping.preset.insert({
-        ['<Tab>'] = cmp.mapping.select_next_item(),    -- Move to next suggestion
-        ['<S-Tab>'] = cmp.mapping.select_prev_item(),  -- Move to previous suggestion
+        ['<Tab>'] = cmp.mapping.select_next_item(),        -- Move to next suggestion
+        ['<S-Tab>'] = cmp.mapping.select_prev_item(),      -- Move to previous suggestion
         ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Confirm selection
-        ['<C-Space>'] = cmp.mapping.complete(),        -- Manually trigger completion
+        ['<C-Space>'] = cmp.mapping.complete(),            -- Manually trigger completion
     }),
 })
 
@@ -65,4 +65,4 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 })
 
 -- Rename variable and function
-vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>nm", vim.lsp.buf.rename, { noremap = true, silent = true })
