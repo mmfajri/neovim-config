@@ -5,3 +5,4 @@ require("900363-nvim.set")
 --require("900363-nvim.transparancy")
 
 --THIS IS GONNA ADD TO CHANGE NEXT TIME 
+--This is gonna diff testing using lazygit 
