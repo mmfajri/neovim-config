@@ -63,6 +63,3 @@ vim.api.nvim_create_autocmd("BufWritePre", {
         })
     end,
 })
-
--- Rename variable and function
-vim.keymap.set("n", "<leader>nm", vim.lsp.buf.rename, { noremap = true, silent = true })

@@ -1,0 +1,8 @@
+Installed Lsp 
+  Installed
+    ◍ eslint-lsp eslint (keywords: javascript, typescript)
+    ◍ gopls (keywords: go)
+    ◍ lua-language-server lua_ls (keywords: lua)
+    ◍ netcoredbg (keywords: .net, c#, f#)
+    ◍ omnisharp (keywords: c#)
+    ◍ rust-analyzer rust_analyzer (keywords: rust)
