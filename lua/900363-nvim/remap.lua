@@ -23,5 +23,5 @@ vim.api.nvim_set_keymap('n', '<leader>bn', ':bnext<CR>', { noremap = true, silen
 vim.api.nvim_set_keymap('n', '<leader>bp', ':bprev<CR>', { noremap = true, silent = true })
 
 -- Map keys to escape from any mode
-vim.keymap.set("i", "<C-j>", "<Esc>", { noremap = true })
-vim.keymap.set("v", "<C-j>", "<Esc>", { noremap = true })
+vim.keymap.set("i", "<C-[>", "<Esc>", { noremap = true })
+vim.keymap.set("v", "<C-[>", "<Esc>", { noremap = true })
