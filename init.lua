@@ -1,3 +1,2 @@
-require("900363-nvim/")
-
-
+-- bootstrap lazy.nvim, LazyVim and your plugins
+require("config.lazy")
