@@ -106,7 +106,18 @@ return {
       -- Shortcut for searching your Neovim configuration files
       vim.keymap.set('n', '<leader>sn', function()
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
-      end, { desc = '[S]earch [N]eovim files' })
+      end, { desc = '[S]earch [N]eovim config files' })
+
+      -- Get the directory of the current buffer
+      vim.keymap.set('n', '<leader>spf', function()
+        local cwd = vim.fn.expand '%:p:h'
+        builtin.find_files { cwd = cwd }
+      end, { desc = 'Search files in the current buffer directory' })
+
+      -- Use the updated working directory
+      vim.keymap.set('n', '<leader>sdf', function()
+        builtin.find_files { cwd = vim.fn.getcwd() }
+      end, { desc = 'Search files in current directory' })
     end,
   },
 }
