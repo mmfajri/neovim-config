@@ -3,10 +3,25 @@
 
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
-vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+-- vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+vim.keymap.set('n', '<leader>nh', ':noh<CR>', { desc = 'Clear Highlight Search', noremap = true, silent = true })
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+
+-- Exit to Netrw
+vim.keymap.set('n', '<leader>pv', vim.cmd.Ex, { desc = 'Exit to Netwr Explorer' })
+
+-- Changing Directory
+vim.keymap.set('n', '<leader>cd', function()
+  local netrw_dir = vim.b.netrw_curdir
+  if netrw_dir then
+    vim.cmd('cd ' .. netrw_dir)
+    print('Changed working directory to: ' .. netrw_dir)
+  else
+    print 'Not in Netrw!'
+  end
+end, { desc = 'Changing Working Directory', noremap = true, silent = true })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -14,7 +29,7 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 --
 -- NOTE: This won't work in all terminal emulators/tmux/etc. Try your own mapping
 -- or just use <C-\><C-n> to exit terminal mode
-vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+--vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 -- TIP: Disable arrow keys in normal mode
 -- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
