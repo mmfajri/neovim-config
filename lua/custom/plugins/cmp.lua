@@ -1,6 +1,7 @@
 return {
   {
     'hrsh7th/nvim-cmp',
+    dependencies = { 'hrsh7th/cmp-nvim-lsp' },
     config = function()
       local cmp = require 'cmp'
 
@@ -15,15 +16,24 @@ return {
           end,
         },
         mapping = cmp.mapping.preset.insert {
-          ['<Tab>'] = cmp.mapping.select_next_item(), -- Move to next suggestion
-          ['<S-Tab>'] = cmp.mapping.select_prev_item(), -- Move to previous suggestion
-          ['<CR>'] = cmp.mapping.confirm { select = true }, -- Confirm selection
-          ['<C-Space>'] = cmp.mapping.complete(), -- Manually trigger completion
+          ['<Tab>'] = function(fallback)
+            if cmp.visible() then
+              cmp.select_next_item()
+            else
+              fallback()
+            end
+          end,
+          ['<S-Tab>'] = function(fallback)
+            if cmp.visible() then
+              cmp.select_prev_item()
+            else
+              fallback()
+            end
+          end,
+          ['<CR>'] = cmp.mapping.confirm { select = true },
+          ['<C-Space>'] = cmp.mapping.complete(),
         },
       }
     end,
-  },
-  {
-    'hrsh7th/cmp-nvim-lsp',
   },
 }
