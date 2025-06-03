@@ -25,5 +25,6 @@ vim.api.nvim_create_autocmd('BufLeave', {
     -- Force Neovim to reload your main colorscheme to ensure all colors are reapplied.
     -- IMPORTANT: Replace 'tokyonight-night' with the exact name of your main colorscheme.
     vim.cmd 'colorscheme tokyonight-night'
+    vim.cmd 'lua ColorMyPencils()'
   end,
 })
