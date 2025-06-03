@@ -1,28 +1,42 @@
--- (Usually near the top of your init.lua, after Lazy.nvim setup)
--- Ensure termguicolors is true globally by default for your main Neovim experience
--- Autocommand: When a terminal buffer is opened (like Lazygit)
+local lazygit_group = vim.api.nvim_create_augroup('LazyGitFix', { clear = true })
+
+-- 1. Fix LazyGit colors without leaking to Neovim
 vim.api.nvim_create_autocmd('TermOpen', {
-  pattern = '*', -- Applies to any terminal buffer
+  group = lazygit_group,
+  pattern = 'term://*lazygit*',
   callback = function()
-    -- Disable Neovim's true colors for *this specific terminal buffer*
-    -- This allows the terminal application (Lazygit) to use its own colors.
+    -- Save current settings
+    vim.g.pre_lazygit_settings = {
+      termguicolors = vim.o.termguicolors,
+      colorscheme = vim.g.colors_name,
+    }
+
+    -- Force terminal-friendly colors
     vim.opt_local.termguicolors = false
-    -- Optional: If Lazygit's background clashes badly, you could try setting
-    -- the background of the terminal buffer to a very specific, dark color here,
-    -- but usually, disabling termguicolors is enough.
-    -- vim.api.nvim_set_hl(0, 'Normal', { bg = '#000000' }) -- Example for a pure black background
+    vim.cmd 'highlight! TermCursorNC ctermbg=8 ctermfg=15'
+    vim.cmd 'highlight! TermCursor ctermbg=8 ctermfg=15'
   end,
 })
 
--- Autocommand: When leaving *any* terminal buffer
-vim.api.nvim_create_autocmd('BufLeave', {
-  pattern = 'term://*', -- Specifically targets buffers whose name starts with 'term://'
+-- 2. Restore Neovim + fix todo-comments after exit
+vim.api.nvim_create_autocmd('TermClose', {
+  group = lazygit_group,
+  pattern = 'term://*lazygit*',
   callback = function()
-    -- Re-enable Neovim's global true colors for all buffers
-    vim.opt.termguicolors = true
-    -- Force Neovim to reload your main colorscheme to ensure all colors are reapplied.
-    -- IMPORTANT: Replace 'tokyonight-night' with the exact name of your main colorscheme.
-    vim.cmd 'colorscheme tokyonight-night'
-    vim.cmd 'lua ColorMyPencils()'
+    if vim.g.pre_lazygit_settings then
+      -- Restore original colors
+      vim.opt.termguicolors = vim.g.pre_lazygit_settings.termguicolors
+      vim.cmd('colorscheme ' .. vim.g.pre_lazygit_settings.colorscheme)
+
+      -- Force reload todo-comments
+      if package.loaded['todo-comments'] then
+        package.loaded['todo-comments'] = nil
+        require('todo-comments').setup()
+      end
+
+      -- Refresh UI (critical for plugin stability)
+      vim.cmd 'checktime'
+      vim.cmd 'mode' -- Force redraw
+    end
   end,
 })
