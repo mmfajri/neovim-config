@@ -1,0 +1,17 @@
+if you find the lazygit selection is too bright, just try do this on the by navigate to the first windows of the lazygit and press e to open lazygit config, paste this code below
+
+gui:
+  theme:
+    activeBorderColor: ["#7aa2f7", "bold"]
+    inactiveBorderColor: ["#3b4261"]
+    optionsTextColor: ["#7aa2f7"]
+    selectedLineBgColor: ["#283457"]
+    
+    # For better diff visibility
+    olderDiffTextColor: ["#f7768e"]  # Deletions (soft red)
+    newerDiffTextColor: ["#9ece6a"]  # Additions (soft green)
+    diffTerminalColor: false         # Force custom colors
+
+os:
+  # Windows-specific settings
+  openCommand: 'cmd /c start ""'  # Better file opening
