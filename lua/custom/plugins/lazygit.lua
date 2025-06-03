@@ -20,11 +20,12 @@ return {
   },
 }
 -- NOTE: The prequisite for additional for git/lazygit
+
 -- dif --> git-delta --> cargo install git-delta
 -- hightlighting --> bat --> cargo install bat
 -- open the git config terminal ==> git config --global --edit
 -- paste here the config
-
+-- ||||||
 -- # ~/.gitconfig
 --
 -- [core]

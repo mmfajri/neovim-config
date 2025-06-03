@@ -1,7 +1,5 @@
 -- (Usually near the top of your init.lua, after Lazy.nvim setup)
 -- Ensure termguicolors is true globally by default for your main Neovim experience
-vim.opt.termguicolors = true
-
 -- Autocommand: When a terminal buffer is opened (like Lazygit)
 vim.api.nvim_create_autocmd('TermOpen', {
   pattern = '*', -- Applies to any terminal buffer
