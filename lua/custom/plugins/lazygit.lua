@@ -19,6 +19,7 @@ return {
     { '<leader>lg', '<cmd>LazyGit<cr>', desc = 'LazyGit' },
   },
 }
+-- NOTE: LazyGit Config File : first windows --> press e
 -- NOTE: The prequisite for additional for git/lazygit
 
 -- dif --> git-delta --> cargo install git-delta
