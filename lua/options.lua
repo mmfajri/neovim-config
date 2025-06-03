@@ -72,4 +72,15 @@ vim.o.scrolloff = 10
 -- See `:help 'confirm'`
 vim.o.confirm = true
 
+-- to prevent the terminal using the same colorscheme from neovim
+-- vim.api.nvim_create_autocmd('TermOpen', {
+--   pattern = '*',
+--   callback = function()
+--     -- Disable termguicolors for the current terminal buffer
+--     vim.opt_local.termguicolors = false
+--     -- If you also want to apply a specific (simpler) colorscheme to terminals
+--     -- vim.cmd.colorscheme('simple_terminal_colors') -- You'd need to define/find a simple terminal colorscheme
+--   end,
+-- })
+
 -- vim: ts=2 sts=2 sw=2 et

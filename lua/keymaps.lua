@@ -67,3 +67,7 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 })
 
 -- vim: ts=2 sts=2 sw=2 et
+--
+-- NOTE: Now this is only the important key that don't need to rebind
+-- press (<ctrl> + \) + (<ctrl> + n) --> to exit the terminal / windows like in neovim
+-- press a --> to enter the terminal / windows like in neovim

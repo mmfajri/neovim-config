@@ -18,6 +18,18 @@ return {
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
       vim.cmd.colorscheme 'tokyonight-night'
+
+      -- === ADD THIS SECTION BELOW ===
+      -- Override the 'Visual' highlight group to make the selection less bright.
+      -- The 'tokyonight-night' theme's default selection might be too intense.
+      -- Experiment with different hex codes to find what looks best for you.
+      -- A darker background color often works well.
+      vim.api.nvim_set_hl(0, 'Visual', {
+        bg = '#3B4261', -- Example: A slightly darker blue-grey from Tokyo Night palette
+        -- You can also try a more neutral dark grey, e.g., '#303030' or '#3C4048'
+        -- fg = '#FFFFFF', -- Optional: Set foreground color if you want to explicitly control text color on selection
+        -- blend = 50,     -- Optional: Add transparency (0-100) if your terminal supports it
+      })
     end,
   },
 }

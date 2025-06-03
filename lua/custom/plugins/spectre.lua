@@ -4,6 +4,9 @@ return {
     'nvim-lua/plenary.nvim',
   },
   config = function()
+    require('spectre').setup {
+      is_block_ui_break = true,
+    }
     vim.keymap.set('n', '<leader>F', function()
       require('spectre').toggle()
     end, {
