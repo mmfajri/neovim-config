@@ -79,7 +79,6 @@ Kickstart Guide:
 If you experience any errors while trying to install kickstart, run `:checkhealth` for more info.
 
 I hope you enjoy your Neovim journey,
-- TJ
 
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
@@ -107,6 +106,18 @@ require 'lazy-plugins'
 
 require 'global-function.transparent'
 
+-- This is only for the diff git only
+
+vim.api.nvim_create_autocmd('BufWinEnter', {
+  callback = function()
+    if vim.wo.diff == true then
+      vim.opt.background = 'dark'
+      vim.cmd 'colorscheme tokyonight'
+    end
+  end,
+})
+
 -- require 'autocmds'
+-- this is only test for git test
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
