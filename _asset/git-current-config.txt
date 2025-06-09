@@ -11,3 +11,7 @@ git config --global --edit
 	line-numbers = true
 	side-by-side = true
 	syntax-theme = Visual Studio Dark+
+[diff]
+	tool = nvimdiff
+[difftool]
+	prompt = false
