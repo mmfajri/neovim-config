@@ -1,0 +1,11 @@
+copy this for powershell windows
+
+git config --global diff.tool delta
+git config --global difftool.delta. cmd 'delta "$LOCAL" "$REMOTE"'
+git config --global difftool.prompt false
+
+for more configure for lazygit config
+
+git config --global core.pager delta
+git config --global interactive.diffFilter "delta --color-only"
+

@@ -1,0 +1,7 @@
+# Backup then remove all configs
+Remove-Item "$env:APPDATA\lazygit\config.yml" -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:LOCALAPPDATA\lazygit\config.yml" -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:USERPROFILE\.config\lazygit\config.yml" -Force -ErrorAction SilentlyContinue
+
+# Start fresh
+lazygit --config

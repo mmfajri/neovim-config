@@ -1,0 +1,7 @@
+# Delete the lazygit executable
+Remove-Item "$env:GOPATH\bin\lazygit.exe" -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:USERPROFILE\go\bin\lazygit.exe" -Force -ErrorAction SilentlyContinue
+
+# Remove configuration files
+Remove-Item "$env:APPDATA\lazygit" -Recurse -Force
+Remove-Item "$env:LOCALAPPDATA\lazygit" -Recurse -Force

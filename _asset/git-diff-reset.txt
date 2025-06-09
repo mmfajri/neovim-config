@@ -1,0 +1,8 @@
+# Remove all diff-related configs
+git config --global --unset diff.tool
+git config --global --unset diff.guitool
+git config --global --unset difftool.prompt
+git config --global --remove-section difftool 2> $null
+
+# Verify no diff config remains
+git config --global --list | Select-String "diff"
