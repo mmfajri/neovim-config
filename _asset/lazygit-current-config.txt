@@ -1,0 +1,17 @@
+git:
+  useConfigFile: true
+  externalDiffCommand: "nvim -u $HOME/AppData/Local/nvim/lazygit/diffinit.lua -d '{{ .From }}' '{{ .To }}'"
+  paging:
+    colorArg: always
+    pager: delta --dark --paging=never
+
+gui:
+  editorCommand: "nvim"
+  theme:
+    activeBorderColor: ["#7aa2f7", "bold"]
+    inactiveBorderColor: ["#3b4261"]
+    optionsTextColor: ["#7aa2f7"]
+    selectedLineBgColor: ["#283457"]
+    olderDiffTextColor: ["#f7768e"]
+    newerDiffTextColor: ["#9ece6a"]
+    diffTerminalColor: false

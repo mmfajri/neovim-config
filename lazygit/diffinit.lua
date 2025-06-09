@@ -1,14 +1,20 @@
-vim.o.termguicolors = true
-vim.cmd.colorscheme 'tokyonight'
+-- diffinit.lua (for external diffs in Lazygit)
 
--- Optional: Set diff-specific UI improvements
+-- Enable 24-bit colors
+vim.o.termguicolors = true
+vim.opt.background = 'dark'
+
+-- Add your custom plugin path to the runtimepath
+vim.opt.rtp:append(vim.fn.stdpath 'config' .. '/lua/kickstart/plugins')
+
+-- Set theme and UI tweaks
+vim.cmd.colorscheme 'tokyonight'
 vim.opt.number = true
 vim.opt.relativenumber = false
 vim.opt.cursorline = true
 vim.opt.signcolumn = 'yes'
 
--- Avoid loading full Lazy.nvim config
--- Skip plugin loading entirely if you're using Lazy.nvim or Packer
+-- Avoid loading full plugin framework
 vim.g.loaded_lazy = 1
-vim.g.loaded_netrwPlugin = 1
 vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1

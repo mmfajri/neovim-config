@@ -1,0 +1,13 @@
+Open the config file with this prompt
+git config --global --edit
+
+[core]
+	editor = nvim
+	pager = delta
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	line-numbers = true
+	side-by-side = true
+	syntax-theme = Visual Studio Dark+
