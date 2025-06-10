@@ -116,7 +116,10 @@ return {
 
       -- Use the updated working directory
       vim.keymap.set('n', '<leader>sdf', function()
-        builtin.find_files { cwd = vim.fn.getcwd() }
+        builtin.find_files {
+          cwd = vim.fn.getcwd(),
+          find_command = { 'rg', '--files', '--no-ignore' },
+        }
       end, { desc = 'Search files in current directory' })
     end,
   },
