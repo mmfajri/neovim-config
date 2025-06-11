@@ -14,6 +14,7 @@ return {
         'yaml',
         'bash',
         'c',
+        'c_sharp',
         'diff',
         'html',
         'lua',
