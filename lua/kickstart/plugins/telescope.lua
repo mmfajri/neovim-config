@@ -61,6 +61,12 @@ return {
         --   },
         -- },
         -- pickers = {}
+
+        -- My own Default Config
+        defaults = {
+          file_ignore_patterns = { '%__virtual.cs$' },
+        },
+
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
