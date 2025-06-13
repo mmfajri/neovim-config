@@ -1,0 +1,10 @@
+  Installed
+    ◍ html-lsp html (keywords: html)
+    ◍ csharp-language-server csharp_ls (keywords: c#)
+    ◍ eslint-lsp eslint (keywords: javascript, typescript)
+    ◍ gopls (keywords: go)
+    ◍ lua-language-server lua_ls (keywords: lua)
+    ◍ roslyn (keywords: c#)
+    ◍ rust-analyzer rust_analyzer (keywords: rust)
+    ◍ rzls (keywords: c#)
+    ◍ stylua (keywords: lua, luau)
