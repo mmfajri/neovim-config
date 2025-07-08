@@ -1,10 +1,20 @@
   Installed
-    ◍ html-lsp html (keywords: html)
-    ◍ csharp-language-server csharp_ls (keywords: c#)
-    ◍ eslint-lsp eslint (keywords: javascript, typescript)
-    ◍ gopls (keywords: go)
-    ◍ lua-language-server lua_ls (keywords: lua)
-    ◍ roslyn (keywords: c#)
-    ◍ rust-analyzer rust_analyzer (keywords: rust)
-    ◍ rzls (keywords: c#)
-    ◍ stylua (keywords: lua, luau)
+    ◍ csharp-language-server csharp_ls
+    ◍ emmet-language-server emmet_language_server
+    ◍ emmet-ls emmet_ls
+    ◍ eslint-lsp eslint
+    ◍ eslint_d
+    ◍ gopls
+    ◍ html-lsp html
+    ◍ lua-language-server lua_ls
+    ◍ omnisharp
+    ◍ oxlint
+    ◍ roslyn
+    ◍ rust-analyzer rust_analyzer
+    ◍ rustywind
+    ◍ rzls-unstable
+    ◍ sqlls
+    ◍ sqls
+    ◍ stylua
+    ◍ svelte-language-server svelte
+    ◍ typescript-language-server ts_ls

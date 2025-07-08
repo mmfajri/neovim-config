@@ -278,6 +278,10 @@ return {
           end,
         },
       }
+
+      require('lspconfig').eslint.setup {
+        filetypes = { 'javascript', 'typescript' },
+      }
     end,
   },
 }
