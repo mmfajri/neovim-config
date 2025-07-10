@@ -22,6 +22,9 @@ return {
       {
         'mason-org/mason.nvim',
         opts = {
+          server = {
+            tailwindcss = {},
+          },
           registries = {
             'github:mason-org/mason-registry',
             'github:Crashdummyy/mason-registry',
@@ -276,6 +279,40 @@ return {
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
             require('lspconfig')[server_name].setup(server)
           end,
+        },
+      }
+
+      -- NOTE: SETUP LSP Config
+      require('lspconfig').cssls.setup {
+        filetypes = { 'css', 'scss', 'less', 'postcss' },
+        settings = {
+          css = {
+            validate = true,
+            lint = {
+              unknownAtRules = 'ignore',
+            },
+          },
+        },
+      }
+
+      require('lspconfig').tailwindcss.setup {
+        filetypes = {
+          'html',
+          'css',
+          'scss',
+          'sass',
+          'postcss',
+          'javascript',
+          'javascriptreact',
+          'typescript',
+          'typescriptreact',
+          'svelte', -- ✅ important!
+        },
+        init_options = {
+          userLanguages = {
+            svelte = 'html', -- 👈 tell it to treat .svelte like HTML
+            postcss = 'css',
+          },
         },
       }
 
