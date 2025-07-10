@@ -282,6 +282,32 @@ return {
       require('lspconfig').eslint.setup {
         filetypes = { 'javascript', 'typescript' },
       }
+
+      require('lspconfig').svelte.setup {
+        on_attach = function(client, bufnr)
+          -- Optional: attach formatting, keymaps, etc
+        end,
+        settings = {
+          svelte = {
+            plugin = {
+              typescript = {
+                enable = true, -- ✅ Enables TS syntax diagnostics
+                diagnostics = {
+                  enable = true, -- ✅ Very important for catching type errors
+                },
+              },
+            },
+          },
+        },
+      }
+
+      require('lspconfig').eslint.setup {
+        settings = {
+          experimental = {
+            useFlatConfig = true,
+          },
+        },
+      }
     end,
   },
 }
