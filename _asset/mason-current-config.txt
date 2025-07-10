@@ -1,20 +1,31 @@
   Installed
-    ◍ csharp-language-server csharp_ls
-    ◍ emmet-language-server emmet_language_server
-    ◍ emmet-ls emmet_ls
-    ◍ eslint-lsp eslint
-    ◍ eslint_d
-    ◍ gopls
-    ◍ html-lsp html
-    ◍ lua-language-server lua_ls
-    ◍ omnisharp
-    ◍ oxlint
-    ◍ roslyn
-    ◍ rust-analyzer rust_analyzer
-    ◍ rustywind
-    ◍ rzls-unstable
-    ◍ sqlls
-    ◍ sqls
-    ◍ stylua
-    ◍ svelte-language-server svelte
-    ◍ typescript-language-server ts_ls
+    ◍ stylelint (keywords: css, sass, scss, less)
+    ◍ superhtml (keywords: html, superhtml)
+    ◍ prettierd (keywords: angular, css, flow, graphql, html, json, jsx, javascript, less, markdown, scss, typescript, vue, yaml)
+    ◍ prettier (keywords: angular, css, flow, graphql, html, json, jsx, javascript, less, markdown, scss, typescript, vue, yaml)
+    ◍ cssmodules-language-server cssmodules_ls (keywords: css)
+    ◍ css-variables-language-server css_variables (keywords: css, scss, less)
+    ◍ ast-grep ast_grep (keywords: c, c++, rust, go, java, python, c#, javascript, jsx, typescript, html, css, kotlin, dart, lua)
+    ◍ autopep8 (keywords: python)
+    ◍ csharp-language-server csharp_ls (keywords: c#)
+    ◍ css-lsp cssls (keywords: css, scss, less)
+    ◍ emmet-language-server emmet_language_server (keywords: emmet)
+    ◍ emmet-ls emmet_ls (keywords: emmet)
+    ◍ eslint-lsp eslint (keywords: javascript, typescript)
+    ◍ eslint_d (keywords: typescript, javascript)
+    ◍ gopls (keywords: go)
+    ◍ html-lsp html (keywords: html)
+    ◍ lua-language-server lua_ls (keywords: lua)
+    ◍ omnisharp (keywords: c#)
+    ◍ oxlint (keywords: javascript, typescript)
+    ◍ python-lsp-server pylsp (keywords: python)
+    ◍ roslyn (keywords: c#)
+    ◍ rust-analyzer rust_analyzer (keywords: rust)
+    ◍ rustywind (keywords: angular, html, jsx, javascript, typescript, vue)
+    ◍ rzls-unstable (keywords: c#)
+    ◍ sqlls (keywords: sql)
+    ◍ sqls (keywords: sql)
+    ◍ stylua (keywords: lua, luau)
+    ◍ svelte-language-server svelte (keywords: svelte)
+    ◍ tailwindcss-language-server tailwindcss (keywords: css)
+    ◍ typescript-language-server ts_ls (keywords: typescript, javascript)
