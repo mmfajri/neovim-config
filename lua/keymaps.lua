@@ -66,6 +66,11 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+-- Copy Paste Config
+vim.keymap.set('x', '<leader>p', [["_dP]], {
+  desc = 'Paste without overwriting the default register',
+})
+
 -- vim: ts=2 sts=2 sw=2 et
 --
 -- NOTE: Now this is only the important key that don't need to rebind
