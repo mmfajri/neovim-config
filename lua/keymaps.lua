@@ -67,7 +67,7 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 })
 
 -- Copy Paste Config
-vim.keymap.set('x', '<leader>p', [["_dP]], {
+vim.keymap.set({ 'x', 'v' }, '<leader>p', [["_dP]], {
   desc = 'Paste without overwriting the default register',
 })
 
