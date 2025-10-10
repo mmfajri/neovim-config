@@ -139,15 +139,27 @@ return {
         },
         {
           type = 'pwa-chrome',
-          name = 'Launch Chrome to debug client',
           request = 'launch',
+          name = 'Launch Chrome to debug client',
           url = 'http://localhost:5173',
+          webRoot = '${workspaceFolder}', -- use '/src' only if your sourcemaps root there
           sourceMaps = true,
-          protocol = 'inspector',
-          port = 9222,
-          webRoot = '${workspaceFolder}/src',
-          -- skip files from vite's hmr
-          skipFiles = { '**/node_modules/**/*', '**/@vite/*', '**/src/client/*', '**/src/*' },
+
+          -- Profile OUTSIDE your project (so Vite won't watch it)
+          userDataDir = (function()
+            return vim.fn.stdpath 'cache' .. '/js-debug-userdatadir'
+          end)(),
+
+          -- Point to Chrome explicitly (adjust if your path differs)
+          runtimeExecutable = 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
+
+          -- Helps in some Windows/corp setups
+          runtimeArgs = {
+            '--no-first-run',
+            '--no-default-browser-check',
+            '--disable-background-networking',
+            '--disable-component-update',
+          },
         },
         -- only if language is javascript, offer this debug action
         language == 'javascript'
@@ -163,6 +175,26 @@ return {
               cwd = '${workspaceFolder}',
             }
           or nil,
+      }
+    end
+
+    -- after: require('dap-vscode-js').setup({ ... })
+    -- local dap = require 'dap'
+    local js_debug_path = vim.fn.stdpath 'data' .. '/lazy/vscode-js-debug'
+
+    -- Ensure the js-debug server entry exists
+    assert(vim.loop.fs_stat(js_debug_path .. '/out/src/vsDebugServer.js'), 'js-debug not built: ' .. js_debug_path .. '/out/src/vsDebugServer.js missing')
+
+    -- Force-register all pwa-* adapters with a server + ${port}
+    for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
+      dap.adapters[adapter] = {
+        type = 'server',
+        host = '127.0.0.1',
+        port = '${port}', -- <-- required for server adapters
+        executable = {
+          command = 'node',
+          args = { js_debug_path .. '/out/src/vsDebugServer.js', '${port}' },
+        },
       }
     end
 
