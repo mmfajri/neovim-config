@@ -83,10 +83,56 @@ return {
       end,
       desc = 'Debug: See last session result.',
     },
+    {
+      '<leader>dl',
+      function()
+        local dap_log = vim.fn.stdpath('cache') .. '/dap.log'
+        local js_log = vim.fn.stdpath('cache') .. '/dap_vscode_js.log'
+        
+        vim.cmd('tabnew')
+        vim.cmd('e ' .. dap_log)
+        vim.cmd('vsplit ' .. js_log)
+        vim.cmd('wincmd h')
+        
+        vim.notify('Opened DAP logs (left=dap.log, right=js-debug)', vim.log.levels.INFO)
+      end,
+      desc = 'Debug: Open DAP log files',
+    },
+    {
+      '<leader>dr',
+      function()
+        -- Reload all breakpoints (useful when they become unbound)
+        require('dap').set_breakpoints()
+        vim.notify('Breakpoints reloaded', vim.log.levels.INFO)
+      end,
+      desc = 'Debug: Reload breakpoints',
+    },
+
+    {
+      '<leader>dc',
+      function()
+        vim.notify([[
+Use Browser DevTools for client-side debugging:
+1. Open browser (any browser) to http://localhost:5173
+2. Press F12 to open DevTools
+3. Set breakpoints in Sources tab
+4. Code in Neovim, debug in browser
+
+For server-side (+server.ts, API routes):
+1. Run: npm run dev:debug
+2. Press F5 in Neovim
+3. Select "⚙️ Debug: SvelteKit Server"
+]], vim.log.levels.INFO, {title = 'Debugging Guide'})
+      end,
+      desc = 'Debug: Show debugging guide',
+    },
   },
   config = function()
     local dap = require 'dap'
     local dapui = require 'dapui'
+
+    -- Enable DAP logging for debugging
+    dap.set_log_level('TRACE')
 
     require('mason-nvim-dap').setup {
       -- Makes a best effort to setup the various debuggers with
@@ -106,60 +152,58 @@ return {
     }
 
     --config Javascript/Typescript Debug
-    require('dap-vscode-js').setup {
-      debugger_path = vim.fn.stdpath 'data' .. '/lazy/vscode-js-debug',
-      adapters = { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' },
-    }
+    local js_debug_path = vim.fn.stdpath 'data' .. '/lazy/vscode-js-debug'
+    
+    -- Verify js-debug is built
+    local vsDebugServer = js_debug_path .. '/out/src/vsDebugServer.js'
+    if not vim.loop.fs_stat(vsDebugServer) then
+      vim.notify('vscode-js-debug not built! Run: cd ' .. js_debug_path .. ' && npm run compile vsDebugServerBundle', vim.log.levels.ERROR)
+      return
+    end
+    
+    -- Manually configure adapters (more reliable than dap-vscode-js auto-setup)
+    for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
+      dap.adapters[adapter] = {
+        type = 'server',
+        host = '127.0.0.1',
+        port = '${port}',
+        executable = {
+          command = 'node',
+          args = { vsDebugServer, '${port}' },
+        },
+      }
+    end
+    
+    -- Increase timeout for slow Windows systems
+    dap.defaults.fallback.timeout = 60000
+    
     for _, language in ipairs { 'typescript', 'javascript', 'svelte' } do
       require('dap').configurations[language] = {
-        -- attach to a node process that has been started with
-        -- `--inspect` for longrunning tasks or `--inspect-brk` for short tasks
-        -- npm script -> `node --inspect-brk ./node_modules/.bin/vite dev`
+        -- Server-side debugging only (no external browser process needed)
         {
-          -- use nvim-dap-vscode-js's pwa-node debug adapter
           type = 'pwa-node',
-          -- attach to an already running node process with --inspect flag
-          -- default port: 9222
-          request = 'attach',
-          -- allows us to pick the process using a picker
-          processId = require('dap.utils').pick_process,
-          -- name of the debug action you have to select for this config
-          name = 'Attach debugger to existing `node --inspect` process',
-          -- for compiled languages like TypeScript or Svelte.js
+          request = 'launch',
+          name = '🚀 Debug: Launch File (Node)',
+          program = '${file}',
+          cwd = '${workspaceFolder}',
           sourceMaps = true,
-          -- resolve source maps in nested locations while ignoring node_modules
+          skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
+        },
+        -- Server-side debugging: Attach to running Vite/Node server
+        {
+          type = 'pwa-node',
+          request = 'attach',
+          name = '⚙️ Debug: SvelteKit Server (Port 9229)',
+          address = 'localhost',
+          port = 9229,
+          sourceMaps = true,
           resolveSourceMapLocations = {
             '${workspaceFolder}/**',
             '!**/node_modules/**',
           },
-          -- path to src in vite based projects (and most other projects as well)
-          cwd = '${workspaceFolder}/src',
-          -- we don't want to debug code inside node_modules, so skip it!
+          cwd = '${workspaceFolder}',
           skipFiles = { '${workspaceFolder}/node_modules/**/*.js' },
-        },
-        {
-          type = 'pwa-chrome',
-          request = 'launch',
-          name = 'Launch Chrome to debug client',
-          url = 'http://localhost:5173',
-          webRoot = '${workspaceFolder}', -- use '/src' only if your sourcemaps root there
-          sourceMaps = true,
-
-          -- Profile OUTSIDE your project (so Vite won't watch it)
-          userDataDir = (function()
-            return vim.fn.stdpath 'cache' .. '/js-debug-userdatadir'
-          end)(),
-
-          -- Point to Chrome explicitly (adjust if your path differs)
-          runtimeExecutable = 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
-
-          -- Helps in some Windows/corp setups
-          runtimeArgs = {
-            '--no-first-run',
-            '--no-default-browser-check',
-            '--disable-background-networking',
-            '--disable-component-update',
-          },
+          restart = true,
         },
         -- only if language is javascript, offer this debug action
         language == 'javascript'
@@ -178,25 +222,7 @@ return {
       }
     end
 
-    -- after: require('dap-vscode-js').setup({ ... })
-    -- local dap = require 'dap'
-    local js_debug_path = vim.fn.stdpath 'data' .. '/lazy/vscode-js-debug'
 
-    -- Ensure the js-debug server entry exists
-    assert(vim.loop.fs_stat(js_debug_path .. '/out/src/vsDebugServer.js'), 'js-debug not built: ' .. js_debug_path .. '/out/src/vsDebugServer.js missing')
-
-    -- Force-register all pwa-* adapters with a server + ${port}
-    for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
-      dap.adapters[adapter] = {
-        type = 'server',
-        host = '127.0.0.1',
-        port = '${port}', -- <-- required for server adapters
-        executable = {
-          command = 'node',
-          args = { js_debug_path .. '/out/src/vsDebugServer.js', '${port}' },
-        },
-      }
-    end
 
     -- Dap UI setup
     -- For more information, see |:help nvim-dap-ui|
