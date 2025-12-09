@@ -11,21 +11,33 @@ return {
       },
     },
     config = function()
-      -- Use one of the methods in the Integration section to compose the command.
-      local mason_registry = require 'mason-registry'
+      -- Path to manually installed Roslyn LSP
+      local roslyn_path = vim.fn.stdpath('data') .. '/mason/packages/roslyn'
+      local roslyn_dll = roslyn_path .. '/Microsoft.CodeAnalysis.LanguageServer.dll'
+      
+      -- Check if Roslyn is installed
+      if vim.fn.filereadable(roslyn_dll) == 0 then
+        vim.notify('Roslyn LSP not found at: ' .. roslyn_dll, vim.log.levels.WARN)
+        return
+      end
 
       local rzls_path = vim.fn.expand '$MASON/packages/rzls/libexec'
       local cmd = {
-        'roslyn',
-        '--stdio',
+        'dotnet',
+        roslyn_dll,
         '--logLevel=Information',
         '--extensionLogDirectory=' .. vim.fs.dirname(vim.lsp.get_log_path()),
-        '--razorSourceGenerator=' .. vim.fs.joinpath(rzls_path, 'Microsoft.CodeAnalysis.Razor.Compiler.dll'),
-        '--razorDesignTimePath=' .. vim.fs.joinpath(rzls_path, 'Targets', 'Microsoft.NET.Sdk.Razor.DesignTime.targets'),
-        '--extension',
-        vim.fs.joinpath(rzls_path, 'RazorExtension', 'Microsoft.VisualStudioCode.RazorExtension.dll'),
       }
-      -- local cmd = {}
+      
+      -- Add Razor support if rzls is installed
+      if vim.fn.isdirectory(rzls_path) == 1 then
+        vim.list_extend(cmd, {
+          '--razorSourceGenerator=' .. vim.fs.joinpath(rzls_path, 'Microsoft.CodeAnalysis.Razor.Compiler.dll'),
+          '--razorDesignTimePath=' .. vim.fs.joinpath(rzls_path, 'Targets', 'Microsoft.NET.Sdk.Razor.DesignTime.targets'),
+          '--extension',
+          vim.fs.joinpath(rzls_path, 'RazorExtension', 'Microsoft.VisualStudioCode.RazorExtension.dll'),
+        })
+      end
 
       vim.lsp.config('roslyn', {
         cmd = cmd,

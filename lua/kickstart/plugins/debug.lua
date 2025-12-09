@@ -107,7 +107,32 @@ return {
       end,
       desc = 'Debug: Reload breakpoints',
     },
-
+    {
+      '<leader>ds',
+      function()
+        -- Start dev server with debugging enabled in a terminal
+        vim.cmd('tabnew')
+        vim.cmd('term NODE_OPTIONS="--inspect" npm run dev')
+        vim.notify('Dev server starting with debugging on port 9229\nNow press <F5> to attach debugger', vim.log.levels.INFO)
+      end,
+      desc = 'Debug: Start Dev Server (with --inspect)',
+    },
+    {
+      '<leader>dp',
+      function()
+        -- Show running Node processes to help identify which one to attach to
+        vim.cmd('new')
+        vim.cmd('term')
+        vim.fn.chansend(vim.b.terminal_job_id, 'echo "Node processes running:"\r')
+        if vim.fn.has('win32') == 1 then
+          vim.fn.chansend(vim.b.terminal_job_id, 'tasklist | findstr /i "node.exe"\r')
+        else
+          vim.fn.chansend(vim.b.terminal_job_id, 'ps aux | grep node | grep -v grep\r')
+        end
+        vim.notify('Look for "node.exe" with your project path in the command line', vim.log.levels.INFO)
+      end,
+      desc = 'Debug: Show Node Processes',
+    },
     {
       '<leader>dc',
       function()
@@ -147,7 +172,10 @@ For server-side (+server.ts, API routes):
       -- online, please don't ask me how to install them :)
       ensure_installed = {
         -- Update this to ensure that you have the debuggers for the langs you want
-        'delve',
+        'delve',        -- Go
+        'codelldb',     -- Rust, C, C++
+        'coreclr',      -- C# (.NET)
+        'debugpy',      -- Python
       },
     }
 
@@ -193,17 +221,44 @@ For server-side (+server.ts, API routes):
         {
           type = 'pwa-node',
           request = 'attach',
-          name = '⚙️ Debug: SvelteKit Server (Port 9229)',
-          address = 'localhost',
-          port = 9229,
+          name = '⚙️ Debug: Attach to Node/Vite Process',
+          processId = function()
+            -- Filter to show only node.exe processes
+            return require('dap.utils').pick_process({ filter = 'node' })
+          end,
           sourceMaps = true,
           resolveSourceMapLocations = {
             '${workspaceFolder}/**',
             '!**/node_modules/**',
           },
           cwd = '${workspaceFolder}',
-          skipFiles = { '${workspaceFolder}/node_modules/**/*.js' },
+          skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
+          timeout = 60000,
+        },
+        {
+          type = 'pwa-node',
+          request = 'attach',
+          name = '🔌 Debug: Attach to Port 9229',
+          address = 'localhost',
+          port = 9229,
+          sourceMaps = true,
+          -- Enhanced source map resolution for SvelteKit/Vite
+          resolveSourceMapLocations = {
+            '${workspaceFolder}/**',
+            '!**/node_modules/**',
+            '!**/.svelte-kit/**',
+          },
+          outFiles = {
+            '${workspaceFolder}/**/*.js',
+            '${workspaceFolder}/.svelte-kit/**/*.js',
+          },
+          cwd = '${workspaceFolder}',
+          skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
           restart = true,
+          timeout = 60000,
+          -- Enable all debugging features
+          trace = true,
+          verboseDiagnosticLogging = true,
         },
         -- only if language is javascript, offer this debug action
         language == 'javascript'
@@ -268,6 +323,103 @@ For server-side (+server.ts, API routes):
         -- On Windows delve must be run attached or it crashes.
         -- See https://github.com/leoluz/nvim-dap-go/blob/main/README.md#configuring
         detached = vim.fn.has 'win32' == 0,
+      },
+    }
+
+    -- Configure C# debugging (.NET Core/5+)
+    dap.adapters.coreclr = {
+      type = 'executable',
+      command = vim.fn.stdpath('data') .. '/mason/bin/netcoredbg',
+      args = { '--interpreter=vscode' },
+    }
+
+    dap.configurations.cs = {
+      {
+        type = 'coreclr',
+        name = 'Launch - .NET Core',
+        request = 'launch',
+        program = function()
+          return vim.fn.input('Path to dll: ', vim.fn.getcwd() .. '/bin/Debug/', 'file')
+        end,
+      },
+      {
+        type = 'coreclr',
+        name = 'Attach - .NET Core',
+        request = 'attach',
+        processId = require('dap.utils').pick_process,
+      },
+    }
+
+    -- Configure Rust/C/C++ debugging
+    dap.adapters.codelldb = {
+      type = 'server',
+      port = '${port}',
+      executable = {
+        command = vim.fn.stdpath('data') .. '/mason/bin/codelldb',
+        args = { '--port', '${port}' },
+      },
+    }
+
+    dap.configurations.rust = {
+      {
+        name = 'Launch Rust',
+        type = 'codelldb',
+        request = 'launch',
+        program = function()
+          return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/target/debug/', 'file')
+        end,
+        cwd = '${workspaceFolder}',
+        stopOnEntry = false,
+      },
+    }
+
+    dap.configurations.cpp = {
+      {
+        name = 'Launch C++',
+        type = 'codelldb',
+        request = 'launch',
+        program = function()
+          return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
+        end,
+        cwd = '${workspaceFolder}',
+        stopOnEntry = false,
+      },
+    }
+
+    dap.configurations.c = dap.configurations.cpp
+
+    -- Configure Python debugging
+    dap.adapters.python = {
+      type = 'executable',
+      command = vim.fn.stdpath('data') .. '/mason/bin/debugpy-adapter',
+    }
+
+    dap.configurations.python = {
+      {
+        type = 'python',
+        request = 'launch',
+        name = 'Launch Python File',
+        program = '${file}',
+        pythonPath = function()
+          -- Try to detect virtual environment
+          local cwd = vim.fn.getcwd()
+          if vim.fn.executable(cwd .. '/venv/bin/python') == 1 then
+            return cwd .. '/venv/bin/python'
+          elseif vim.fn.executable(cwd .. '/.venv/bin/python') == 1 then
+            return cwd .. '/.venv/bin/python'
+          else
+            return 'python'
+          end
+        end,
+      },
+      {
+        type = 'python',
+        request = 'attach',
+        name = 'Attach to running Python',
+        connect = {
+          host = 'localhost',
+          port = 5678,
+        },
       },
     }
   end,
