@@ -1,6 +1,6 @@
 git:
   useConfigFile: true
-  externalDiffCommand: "nvim -u $HOME/AppData/Local/nvim/lazygit/diffinit.lua -d '{{ .From }}' '{{ .To }}'"
+  externalDiffCommand: "nvim -u $HOME/AppData/Local/nvim/lazygit/diffinit.lua -d '{{ .From }}' '{{ .To }}' -c 'wincmd H'"
   paging:
     colorArg: always
     pager: delta --dark --paging=never

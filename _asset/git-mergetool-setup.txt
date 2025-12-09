@@ -1,0 +1,36 @@
+# Git Merge Tool Configuration
+# Add this to your ~/.gitconfig or run these commands
+
+# Configure nvimdiff as the merge tool with custom theme
+git config --global merge.tool nvimdiff4
+git config --global mergetool.nvimdiff4.cmd 'nvim -u "$HOME/AppData/Local/nvim/lazygit/mergeinit.lua" -d "$LOCAL" "$BASE" "$REMOTE" "$MERGED" -c "wincmd J | wincmd ="'
+git config --global mergetool.prompt false
+git config --global mergetool.keepBackup false
+
+# Alternative: Simple nvimdiff with 3-way merge
+# git config --global merge.tool nvimdiff
+# git config --global mergetool.nvimdiff.cmd 'nvim -u "$HOME/AppData/Local/nvim/lazygit/mergeinit.lua" -d "$LOCAL" "$REMOTE" "$MERGED"'
+
+# Set editor
+git config --global core.editor "nvim"
+
+# ============================================
+# Explanation of nvimdiff4 layout:
+# ============================================
+# 
+# Top row (3 windows):
+#   LOCAL  | BASE   | REMOTE
+#   (yours)| (common)| (theirs)
+#
+# Bottom (1 window):
+#   MERGED (result - this is what you edit)
+#
+# Commands while in merge:
+#   :diffget LOCAL   (or :diffget LO) - get from LOCAL
+#   :diffget BASE    (or :diffget BA) - get from BASE
+#   :diffget REMOTE  (or :diffget RE) - get from REMOTE
+#   ]c - Jump to next conflict
+#   [c - Jump to previous conflict
+#   :wqa - Save and quit all
+#   :cq - Abort merge
+#

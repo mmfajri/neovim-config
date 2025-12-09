@@ -47,6 +47,61 @@ return {
           },
           notification = {
             override_vim_notify = true, -- replaces vim.notify
+            window = {
+              winblend = 0, -- make notifications opaque
+              max_width = 100, -- even wider to see full error messages
+            },
+            view = {
+              stack_upwards = false, -- newer notifications on top
+            },
+          },
+        },
+        keys = {
+          {
+            '<leader>fn',
+            function()
+              require('fidget.notification').show_history()
+            end,
+            desc = 'Fidget: Show notification history',
+          },
+          {
+            '<leader>fN',
+            function()
+              -- Try to get Fidget notification history directly
+              local fidget = require('fidget.notification')
+              local history = fidget.get_history and fidget.get_history() or {}
+              
+              if #history == 0 then
+                vim.notify('No Fidget notification history available', vim.log.levels.WARN)
+                return
+              end
+              
+              -- Create new buffer
+              vim.cmd('new')
+              local buf = vim.api.nvim_get_current_buf()
+              
+              -- Set buffer options
+              vim.api.nvim_buf_set_option(buf, 'buftype', 'nofile')
+              vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
+              vim.api.nvim_buf_set_option(buf, 'swapfile', false)
+              vim.api.nvim_buf_set_name(buf, 'Fidget-History')
+              
+              -- Format history entries
+              local lines = {}
+              for i, notif in ipairs(history) do
+                local msg = type(notif) == 'table' and notif.message or tostring(notif)
+                table.insert(lines, string.format('[%d] %s', i, msg))
+              end
+              
+              -- Add content BEFORE making it read-only
+              vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+              
+              -- NOW make it read-only
+              vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+              
+              vim.notify('Fidget history opened! Use visual mode to copy.', vim.log.levels.INFO)
+            end,
+            desc = 'Open Fidget history in copyable buffer',
           },
         },
       },
@@ -67,6 +122,8 @@ return {
           -- LSP-related mappings
           map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
           map('gra', vim.lsp.buf.code_action, '[G]oto Code [A]ction', { 'n', 'x' })
+          -- Visual Studio-style code actions with Ctrl+.
+          map('<C-.>', vim.lsp.buf.code_action, 'Code [A]ction', { 'n', 'x' })
           map('grr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
           map('gri', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
           map('grd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
@@ -126,6 +183,7 @@ return {
             },
           },
         },
+
       }
 
       -- Ensure LSP servers are installed

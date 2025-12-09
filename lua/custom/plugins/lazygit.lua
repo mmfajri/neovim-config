@@ -18,6 +18,13 @@ return {
   keys = {
     { '<leader>lg', '<cmd>LazyGit<cr>', desc = 'LazyGit' },
   },
+  config = function()
+    -- Ensure lazygit uses the correct config file with vertical diff
+    vim.g.lazygit_floating_window_winblend = 0
+    vim.g.lazygit_floating_window_scaling_factor = 0.9
+    vim.g.lazygit_floating_window_border_chars = {'╭','─', '╮', '│', '╯','─', '╰', '│'}
+    vim.g.lazygit_use_neovim_remote = 1
+  end,
 }
 -- NOTE: LazyGit Config File : first windows --> press e
 -- NOTE: The prequisite for additional for git/lazygit

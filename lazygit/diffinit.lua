@@ -18,3 +18,16 @@ vim.opt.signcolumn = 'yes'
 vim.g.loaded_lazy = 1
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
+
+-- Force vertical diff split after files are loaded
+vim.api.nvim_create_autocmd('VimEnter', {
+  callback = function()
+    -- Wait for diff mode to be initialized
+    vim.defer_fn(function()
+      if vim.wo.diff then
+        -- Move left window to full height vertical split
+        vim.cmd('wincmd H')
+      end
+    end, 50) -- Small delay to ensure diff mode is active
+  end,
+})

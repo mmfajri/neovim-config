@@ -23,6 +23,13 @@ return {
 
     -- Add your own debuggers here
     'leoluz/nvim-dap-go',
+
+    'mxsdev/nvim-dap-vscode-js',
+    {
+      'microsoft/vscode-js-debug',
+      version = '1.x',
+      build = 'npm i && npm run compile vsDebugServerBundle && mv dist out',
+    },
   },
   keys = {
     -- Basic debugging keymaps, feel free to change to your liking!
@@ -76,10 +83,81 @@ return {
       end,
       desc = 'Debug: See last session result.',
     },
+    {
+      '<leader>dl',
+      function()
+        local dap_log = vim.fn.stdpath('cache') .. '/dap.log'
+        local js_log = vim.fn.stdpath('cache') .. '/dap_vscode_js.log'
+        
+        vim.cmd('tabnew')
+        vim.cmd('e ' .. dap_log)
+        vim.cmd('vsplit ' .. js_log)
+        vim.cmd('wincmd h')
+        
+        vim.notify('Opened DAP logs (left=dap.log, right=js-debug)', vim.log.levels.INFO)
+      end,
+      desc = 'Debug: Open DAP log files',
+    },
+    {
+      '<leader>dr',
+      function()
+        -- Reload all breakpoints (useful when they become unbound)
+        require('dap').set_breakpoints()
+        vim.notify('Breakpoints reloaded', vim.log.levels.INFO)
+      end,
+      desc = 'Debug: Reload breakpoints',
+    },
+    {
+      '<leader>ds',
+      function()
+        -- Start dev server with debugging enabled in a terminal
+        vim.cmd('tabnew')
+        vim.cmd('term NODE_OPTIONS="--inspect" npm run dev')
+        vim.notify('Dev server starting with debugging on port 9229\nNow press <F5> to attach debugger', vim.log.levels.INFO)
+      end,
+      desc = 'Debug: Start Dev Server (with --inspect)',
+    },
+    {
+      '<leader>dp',
+      function()
+        -- Show running Node processes to help identify which one to attach to
+        vim.cmd('new')
+        vim.cmd('term')
+        vim.fn.chansend(vim.b.terminal_job_id, 'echo "Node processes running:"\r')
+        if vim.fn.has('win32') == 1 then
+          vim.fn.chansend(vim.b.terminal_job_id, 'tasklist | findstr /i "node.exe"\r')
+        else
+          vim.fn.chansend(vim.b.terminal_job_id, 'ps aux | grep node | grep -v grep\r')
+        end
+        vim.notify('Look for "node.exe" with your project path in the command line', vim.log.levels.INFO)
+      end,
+      desc = 'Debug: Show Node Processes',
+    },
+    {
+      '<leader>dc',
+      function()
+        vim.notify([[
+Use Browser DevTools for client-side debugging:
+1. Open browser (any browser) to http://localhost:5173
+2. Press F12 to open DevTools
+3. Set breakpoints in Sources tab
+4. Code in Neovim, debug in browser
+
+For server-side (+server.ts, API routes):
+1. Run: npm run dev:debug
+2. Press F5 in Neovim
+3. Select "⚙️ Debug: SvelteKit Server"
+]], vim.log.levels.INFO, {title = 'Debugging Guide'})
+      end,
+      desc = 'Debug: Show debugging guide',
+    },
   },
   config = function()
     local dap = require 'dap'
     local dapui = require 'dapui'
+
+    -- Enable DAP logging for debugging
+    dap.set_log_level('TRACE')
 
     require('mason-nvim-dap').setup {
       -- Makes a best effort to setup the various debuggers with
@@ -94,9 +172,112 @@ return {
       -- online, please don't ask me how to install them :)
       ensure_installed = {
         -- Update this to ensure that you have the debuggers for the langs you want
-        'delve',
+        'delve',        -- Go
+        'codelldb',     -- Rust, C, C++
+        'coreclr',      -- C# (.NET)
+        'debugpy',      -- Python
       },
     }
+
+    --config Javascript/Typescript Debug
+    local js_debug_path = vim.fn.stdpath 'data' .. '/lazy/vscode-js-debug'
+    
+    -- Verify js-debug is built
+    local vsDebugServer = js_debug_path .. '/out/src/vsDebugServer.js'
+    if not vim.loop.fs_stat(vsDebugServer) then
+      vim.notify('vscode-js-debug not built! Run: cd ' .. js_debug_path .. ' && npm run compile vsDebugServerBundle', vim.log.levels.ERROR)
+      return
+    end
+    
+    -- Manually configure adapters (more reliable than dap-vscode-js auto-setup)
+    for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
+      dap.adapters[adapter] = {
+        type = 'server',
+        host = '127.0.0.1',
+        port = '${port}',
+        executable = {
+          command = 'node',
+          args = { vsDebugServer, '${port}' },
+        },
+      }
+    end
+    
+    -- Increase timeout for slow Windows systems
+    dap.defaults.fallback.timeout = 60000
+    
+    for _, language in ipairs { 'typescript', 'javascript', 'svelte' } do
+      require('dap').configurations[language] = {
+        -- Server-side debugging only (no external browser process needed)
+        {
+          type = 'pwa-node',
+          request = 'launch',
+          name = '🚀 Debug: Launch File (Node)',
+          program = '${file}',
+          cwd = '${workspaceFolder}',
+          sourceMaps = true,
+          skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
+        },
+        -- Server-side debugging: Attach to running Vite/Node server
+        {
+          type = 'pwa-node',
+          request = 'attach',
+          name = '⚙️ Debug: Attach to Node/Vite Process',
+          processId = function()
+            -- Filter to show only node.exe processes
+            return require('dap.utils').pick_process({ filter = 'node' })
+          end,
+          sourceMaps = true,
+          resolveSourceMapLocations = {
+            '${workspaceFolder}/**',
+            '!**/node_modules/**',
+          },
+          cwd = '${workspaceFolder}',
+          skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
+          timeout = 60000,
+        },
+        {
+          type = 'pwa-node',
+          request = 'attach',
+          name = '🔌 Debug: Attach to Port 9229',
+          address = 'localhost',
+          port = 9229,
+          sourceMaps = true,
+          -- Enhanced source map resolution for SvelteKit/Vite
+          resolveSourceMapLocations = {
+            '${workspaceFolder}/**',
+            '!**/node_modules/**',
+            '!**/.svelte-kit/**',
+          },
+          outFiles = {
+            '${workspaceFolder}/**/*.js',
+            '${workspaceFolder}/.svelte-kit/**/*.js',
+          },
+          cwd = '${workspaceFolder}',
+          skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
+          restart = true,
+          timeout = 60000,
+          -- Enable all debugging features
+          trace = true,
+          verboseDiagnosticLogging = true,
+        },
+        -- only if language is javascript, offer this debug action
+        language == 'javascript'
+            and {
+              -- use nvim-dap-vscode-js's pwa-node debug adapter
+              type = 'pwa-node',
+              -- launch a new process to attach the debugger to
+              request = 'launch',
+              -- name of the debug action you have to select for this config
+              name = 'Launch file in new node process',
+              -- launch current file
+              program = '${file}',
+              cwd = '${workspaceFolder}',
+            }
+          or nil,
+      }
+    end
+
+
 
     -- Dap UI setup
     -- For more information, see |:help nvim-dap-ui|
@@ -121,16 +302,16 @@ return {
     }
 
     -- Change breakpoint icons
-    -- vim.api.nvim_set_hl(0, 'DapBreak', { fg = '#e51400' })
-    -- vim.api.nvim_set_hl(0, 'DapStop', { fg = '#ffcc00' })
-    -- local breakpoint_icons = vim.g.have_nerd_font
-    --     and { Breakpoint = '', BreakpointCondition = '', BreakpointRejected = '', LogPoint = '', Stopped = '' }
-    --   or { Breakpoint = '●', BreakpointCondition = '⊜', BreakpointRejected = '⊘', LogPoint = '◆', Stopped = '⭔' }
-    -- for type, icon in pairs(breakpoint_icons) do
-    --   local tp = 'Dap' .. type
-    --   local hl = (type == 'Stopped') and 'DapStop' or 'DapBreak'
-    --   vim.fn.sign_define(tp, { text = icon, texthl = hl, numhl = hl })
-    -- end
+    vim.api.nvim_set_hl(0, 'DapBreak', { fg = '#e51400' })
+    vim.api.nvim_set_hl(0, 'DapStop', { fg = '#ffcc00' })
+    local breakpoint_icons = vim.g.have_nerd_font
+        and { Breakpoint = '', BreakpointCondition = '', BreakpointRejected = '', LogPoint = '', Stopped = '' }
+      or { Breakpoint = '●', BreakpointCondition = '⊜', BreakpointRejected = '⊘', LogPoint = '◆', Stopped = '⭔' }
+    for type, icon in pairs(breakpoint_icons) do
+      local tp = 'Dap' .. type
+      local hl = (type == 'Stopped') and 'DapStop' or 'DapBreak'
+      vim.fn.sign_define(tp, { text = icon, texthl = hl, numhl = hl })
+    end
 
     dap.listeners.after.event_initialized['dapui_config'] = dapui.open
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
@@ -142,6 +323,103 @@ return {
         -- On Windows delve must be run attached or it crashes.
         -- See https://github.com/leoluz/nvim-dap-go/blob/main/README.md#configuring
         detached = vim.fn.has 'win32' == 0,
+      },
+    }
+
+    -- Configure C# debugging (.NET Core/5+)
+    dap.adapters.coreclr = {
+      type = 'executable',
+      command = vim.fn.stdpath('data') .. '/mason/bin/netcoredbg',
+      args = { '--interpreter=vscode' },
+    }
+
+    dap.configurations.cs = {
+      {
+        type = 'coreclr',
+        name = 'Launch - .NET Core',
+        request = 'launch',
+        program = function()
+          return vim.fn.input('Path to dll: ', vim.fn.getcwd() .. '/bin/Debug/', 'file')
+        end,
+      },
+      {
+        type = 'coreclr',
+        name = 'Attach - .NET Core',
+        request = 'attach',
+        processId = require('dap.utils').pick_process,
+      },
+    }
+
+    -- Configure Rust/C/C++ debugging
+    dap.adapters.codelldb = {
+      type = 'server',
+      port = '${port}',
+      executable = {
+        command = vim.fn.stdpath('data') .. '/mason/bin/codelldb',
+        args = { '--port', '${port}' },
+      },
+    }
+
+    dap.configurations.rust = {
+      {
+        name = 'Launch Rust',
+        type = 'codelldb',
+        request = 'launch',
+        program = function()
+          return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/target/debug/', 'file')
+        end,
+        cwd = '${workspaceFolder}',
+        stopOnEntry = false,
+      },
+    }
+
+    dap.configurations.cpp = {
+      {
+        name = 'Launch C++',
+        type = 'codelldb',
+        request = 'launch',
+        program = function()
+          return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
+        end,
+        cwd = '${workspaceFolder}',
+        stopOnEntry = false,
+      },
+    }
+
+    dap.configurations.c = dap.configurations.cpp
+
+    -- Configure Python debugging
+    dap.adapters.python = {
+      type = 'executable',
+      command = vim.fn.stdpath('data') .. '/mason/bin/debugpy-adapter',
+    }
+
+    dap.configurations.python = {
+      {
+        type = 'python',
+        request = 'launch',
+        name = 'Launch Python File',
+        program = '${file}',
+        pythonPath = function()
+          -- Try to detect virtual environment
+          local cwd = vim.fn.getcwd()
+          if vim.fn.executable(cwd .. '/venv/bin/python') == 1 then
+            return cwd .. '/venv/bin/python'
+          elseif vim.fn.executable(cwd .. '/.venv/bin/python') == 1 then
+            return cwd .. '/.venv/bin/python'
+          else
+            return 'python'
+          end
+        end,
+      },
+      {
+        type = 'python',
+        request = 'attach',
+        name = 'Attach to running Python',
+        connect = {
+          host = 'localhost',
+          port = 5678,
+        },
       },
     }
   end,
