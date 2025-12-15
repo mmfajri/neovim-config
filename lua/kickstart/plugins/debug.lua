@@ -217,6 +217,38 @@ For server-side (+server.ts, API routes):
           sourceMaps = true,
           skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
         },
+        -- Debug npm/yarn scripts (dev, start, etc.)
+        {
+          type = 'pwa-node',
+          request = 'launch',
+          name = '📦 Debug: npm run dev',
+          runtimeExecutable = 'npm',
+          runtimeArgs = { 'run', 'dev' },
+          cwd = '${workspaceFolder}',
+          sourceMaps = true,
+          resolveSourceMapLocations = {
+            '${workspaceFolder}/**',
+            '!**/node_modules/**',
+          },
+          skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
+          console = 'integratedTerminal',
+          restart = true,
+        },
+        {
+          type = 'pwa-node',
+          request = 'launch',
+          name = '📦 Debug: npm start',
+          runtimeExecutable = 'npm',
+          runtimeArgs = { 'start' },
+          cwd = '${workspaceFolder}',
+          sourceMaps = true,
+          resolveSourceMapLocations = {
+            '${workspaceFolder}/**',
+            '!**/node_modules/**',
+          },
+          skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
+          console = 'integratedTerminal',
+        },
         -- Server-side debugging: Attach to running Vite/Node server
         {
           type = 'pwa-node',
