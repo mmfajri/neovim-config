@@ -381,10 +381,26 @@ For server-side (+server.ts, API routes):
         type = 'codelldb',
         request = 'launch',
         program = function()
-          return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/target/debug/', 'file')
+          -- Try to find the binary automatically
+          local cwd = vim.fn.getcwd()
+          local project_name = vim.fn.fnamemodify(cwd, ':t')
+          local binary = cwd .. '/target/debug/' .. project_name
+          if vim.fn.has 'win32' == 1 then
+            binary = binary .. '.exe'
+          end
+          if vim.fn.filereadable(binary) == 1 then
+            return binary
+          end
+          return vim.fn.input('Path to executable: ', cwd .. '/target/debug/', 'file')
         end,
         cwd = '${workspaceFolder}',
         stopOnEntry = false,
+      },
+      {
+        name = 'Attach to Rust Process',
+        type = 'codelldb',
+        request = 'attach',
+        pid = require('dap.utils').pick_process,
       },
     }
 
@@ -398,6 +414,12 @@ For server-side (+server.ts, API routes):
         end,
         cwd = '${workspaceFolder}',
         stopOnEntry = false,
+      },
+      {
+        name = 'Attach to C++ Process',
+        type = 'codelldb',
+        request = 'attach',
+        pid = require('dap.utils').pick_process,
       },
     }
 
