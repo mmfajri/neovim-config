@@ -329,6 +329,9 @@ For server-side (+server.ts, API routes):
       type = 'executable',
       command = vim.fn.stdpath 'data' .. '/mason/bin/netcoredbg.cmd',
       args = { '--interpreter=vscode' },
+      options = {
+        detached = false,
+      },
     }
 
     dap.configurations.cs = {
@@ -337,12 +340,26 @@ For server-side (+server.ts, API routes):
         name = 'Launch - .NET Core',
         request = 'launch',
         program = function()
-          return vim.fn.input('Path to dll: ', vim.fn.getcwd() .. '/bin/Debug/', 'file')
+          local cwd = vim.fn.getcwd()
+          -- Find the main project DLL (not dependencies)
+          local project_name = vim.fn.fnamemodify(cwd, ':t')
+          local dll = vim.fn.glob(cwd .. '/bin/Debug/**/' .. project_name .. '.dll')
+          if dll == '' then
+            -- Fallback: try to find any DLL with the project directory name
+            dll = vim.fn.glob(cwd .. '/bin/Debug/**/pos_api_app.dll')
+          end
+          if dll ~= '' then
+            -- Take first match if multiple
+            return vim.split(dll, '\n')[1]
+          end
+          return vim.fn.input('Path to dll: ', cwd .. '/bin/Debug/', 'file')
         end,
+        cwd = '${workspaceFolder}',
+        stopAtEntry = false,
       },
       {
         type = 'coreclr',
-        name = 'Attach - .NET Core',
+        name = 'Attach to Running .NET Process',
         request = 'attach',
         processId = require('dap.utils').pick_process,
       },
