@@ -41,21 +41,21 @@ return {
       desc = 'Debug: Start/Continue',
     },
     {
-      '<F1>',
+      '<C-F11>',
       function()
         require('dap').step_into()
       end,
       desc = 'Debug: Step Into',
     },
     {
-      '<F2>',
+      '<C-F10>',
       function()
         require('dap').step_over()
       end,
       desc = 'Debug: Step Over',
     },
     {
-      '<F3>',
+      '<C-F12>',
       function()
         require('dap').step_out()
       end,
@@ -86,14 +86,14 @@ return {
     {
       '<leader>dl',
       function()
-        local dap_log = vim.fn.stdpath('cache') .. '/dap.log'
-        local js_log = vim.fn.stdpath('cache') .. '/dap_vscode_js.log'
-        
-        vim.cmd('tabnew')
+        local dap_log = vim.fn.stdpath 'cache' .. '/dap.log'
+        local js_log = vim.fn.stdpath 'cache' .. '/dap_vscode_js.log'
+
+        vim.cmd 'tabnew'
         vim.cmd('e ' .. dap_log)
         vim.cmd('vsplit ' .. js_log)
-        vim.cmd('wincmd h')
-        
+        vim.cmd 'wincmd h'
+
         vim.notify('Opened DAP logs (left=dap.log, right=js-debug)', vim.log.levels.INFO)
       end,
       desc = 'Debug: Open DAP log files',
@@ -111,8 +111,8 @@ return {
       '<leader>ds',
       function()
         -- Start dev server with debugging enabled in a terminal
-        vim.cmd('tabnew')
-        vim.cmd('term NODE_OPTIONS="--inspect" npm run dev')
+        vim.cmd 'tabnew'
+        vim.cmd 'term NODE_OPTIONS="--inspect" npm run dev'
         vim.notify('Dev server starting with debugging on port 9229\nNow press <F5> to attach debugger', vim.log.levels.INFO)
       end,
       desc = 'Debug: Start Dev Server (with --inspect)',
@@ -121,10 +121,10 @@ return {
       '<leader>dp',
       function()
         -- Show running Node processes to help identify which one to attach to
-        vim.cmd('new')
-        vim.cmd('term')
+        vim.cmd 'new'
+        vim.cmd 'term'
         vim.fn.chansend(vim.b.terminal_job_id, 'echo "Node processes running:"\r')
-        if vim.fn.has('win32') == 1 then
+        if vim.fn.has 'win32' == 1 then
           vim.fn.chansend(vim.b.terminal_job_id, 'tasklist | findstr /i "node.exe"\r')
         else
           vim.fn.chansend(vim.b.terminal_job_id, 'ps aux | grep node | grep -v grep\r')
@@ -136,7 +136,8 @@ return {
     {
       '<leader>dc',
       function()
-        vim.notify([[
+        vim.notify(
+          [[
 Use Browser DevTools for client-side debugging:
 1. Open browser (any browser) to http://localhost:5173
 2. Press F12 to open DevTools
@@ -147,7 +148,10 @@ For server-side (+server.ts, API routes):
 1. Run: npm run dev:debug
 2. Press F5 in Neovim
 3. Select "⚙️ Debug: SvelteKit Server"
-]], vim.log.levels.INFO, {title = 'Debugging Guide'})
+]],
+          vim.log.levels.INFO,
+          { title = 'Debugging Guide' }
+        )
       end,
       desc = 'Debug: Show debugging guide',
     },
@@ -157,7 +161,7 @@ For server-side (+server.ts, API routes):
     local dapui = require 'dapui'
 
     -- Enable DAP logging for debugging
-    dap.set_log_level('TRACE')
+    dap.set_log_level 'TRACE'
 
     require('mason-nvim-dap').setup {
       -- Makes a best effort to setup the various debuggers with
@@ -172,23 +176,19 @@ For server-side (+server.ts, API routes):
       -- online, please don't ask me how to install them :)
       ensure_installed = {
         -- Update this to ensure that you have the debuggers for the langs you want
-        'delve',        -- Go
-        'codelldb',     -- Rust, C, C++
-        'coreclr',      -- C# (.NET)
-        'debugpy',      -- Python
       },
     }
 
     --config Javascript/Typescript Debug
     local js_debug_path = vim.fn.stdpath 'data' .. '/lazy/vscode-js-debug'
-    
+
     -- Verify js-debug is built
     local vsDebugServer = js_debug_path .. '/out/src/vsDebugServer.js'
     if not vim.loop.fs_stat(vsDebugServer) then
       vim.notify('vscode-js-debug not built! Run: cd ' .. js_debug_path .. ' && npm run compile vsDebugServerBundle', vim.log.levels.ERROR)
       return
     end
-    
+
     -- Manually configure adapters (more reliable than dap-vscode-js auto-setup)
     for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
       dap.adapters[adapter] = {
@@ -201,10 +201,10 @@ For server-side (+server.ts, API routes):
         },
       }
     end
-    
+
     -- Increase timeout for slow Windows systems
     dap.defaults.fallback.timeout = 60000
-    
+
     for _, language in ipairs { 'typescript', 'javascript', 'svelte' } do
       require('dap').configurations[language] = {
         -- Server-side debugging only (no external browser process needed)
@@ -224,7 +224,7 @@ For server-side (+server.ts, API routes):
           name = '⚙️ Debug: Attach to Node/Vite Process',
           processId = function()
             -- Filter to show only node.exe processes
-            return require('dap.utils').pick_process({ filter = 'node' })
+            return require('dap.utils').pick_process { filter = 'node' }
           end,
           sourceMaps = true,
           resolveSourceMapLocations = {
@@ -277,8 +277,6 @@ For server-side (+server.ts, API routes):
       }
     end
 
-
-
     -- Dap UI setup
     -- For more information, see |:help nvim-dap-ui|
     dapui.setup {
@@ -329,8 +327,11 @@ For server-side (+server.ts, API routes):
     -- Configure C# debugging (.NET Core/5+)
     dap.adapters.coreclr = {
       type = 'executable',
-      command = vim.fn.stdpath('data') .. '/mason/bin/netcoredbg',
+      command = vim.fn.stdpath 'data' .. '/mason/bin/netcoredbg.cmd',
       args = { '--interpreter=vscode' },
+      options = {
+        detached = false,
+      },
     }
 
     dap.configurations.cs = {
@@ -339,12 +340,26 @@ For server-side (+server.ts, API routes):
         name = 'Launch - .NET Core',
         request = 'launch',
         program = function()
-          return vim.fn.input('Path to dll: ', vim.fn.getcwd() .. '/bin/Debug/', 'file')
+          local cwd = vim.fn.getcwd()
+          -- Find the main project DLL (not dependencies)
+          local project_name = vim.fn.fnamemodify(cwd, ':t')
+          local dll = vim.fn.glob(cwd .. '/bin/Debug/**/' .. project_name .. '.dll')
+          if dll == '' then
+            -- Fallback: try to find any DLL with the project directory name
+            dll = vim.fn.glob(cwd .. '/bin/Debug/**/pos_api_app.dll')
+          end
+          if dll ~= '' then
+            -- Take first match if multiple
+            return vim.split(dll, '\n')[1]
+          end
+          return vim.fn.input('Path to dll: ', cwd .. '/bin/Debug/', 'file')
         end,
+        cwd = '${workspaceFolder}',
+        stopAtEntry = false,
       },
       {
         type = 'coreclr',
-        name = 'Attach - .NET Core',
+        name = 'Attach to Running .NET Process',
         request = 'attach',
         processId = require('dap.utils').pick_process,
       },
@@ -355,7 +370,7 @@ For server-side (+server.ts, API routes):
       type = 'server',
       port = '${port}',
       executable = {
-        command = vim.fn.stdpath('data') .. '/mason/bin/codelldb',
+        command = vim.fn.stdpath 'data' .. '/mason/bin/codelldb',
         args = { '--port', '${port}' },
       },
     }
@@ -366,10 +381,26 @@ For server-side (+server.ts, API routes):
         type = 'codelldb',
         request = 'launch',
         program = function()
-          return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/target/debug/', 'file')
+          -- Try to find the binary automatically
+          local cwd = vim.fn.getcwd()
+          local project_name = vim.fn.fnamemodify(cwd, ':t')
+          local binary = cwd .. '/target/debug/' .. project_name
+          if vim.fn.has 'win32' == 1 then
+            binary = binary .. '.exe'
+          end
+          if vim.fn.filereadable(binary) == 1 then
+            return binary
+          end
+          return vim.fn.input('Path to executable: ', cwd .. '/target/debug/', 'file')
         end,
         cwd = '${workspaceFolder}',
         stopOnEntry = false,
+      },
+      {
+        name = 'Attach to Rust Process',
+        type = 'codelldb',
+        request = 'attach',
+        pid = require('dap.utils').pick_process,
       },
     }
 
@@ -384,6 +415,12 @@ For server-side (+server.ts, API routes):
         cwd = '${workspaceFolder}',
         stopOnEntry = false,
       },
+      {
+        name = 'Attach to C++ Process',
+        type = 'codelldb',
+        request = 'attach',
+        pid = require('dap.utils').pick_process,
+      },
     }
 
     dap.configurations.c = dap.configurations.cpp
@@ -391,7 +428,7 @@ For server-side (+server.ts, API routes):
     -- Configure Python debugging
     dap.adapters.python = {
       type = 'executable',
-      command = vim.fn.stdpath('data') .. '/mason/bin/debugpy-adapter',
+      command = vim.fn.stdpath 'data' .. '/mason/bin/debugpy-adapter',
     }
 
     dap.configurations.python = {
