@@ -255,7 +255,6 @@ For server-side (+server.ts, API routes):
           request = 'attach',
           name = '⚙️ Debug: Attach to Node/Vite Process',
           processId = function()
-            -- Filter to show only node.exe processes
             return require('dap.utils').pick_process { filter = 'node' }
           end,
           sourceMaps = true,
@@ -270,9 +269,18 @@ For server-side (+server.ts, API routes):
         {
           type = 'pwa-node',
           request = 'attach',
-          name = '🔌 Debug: Attach to Port 9229',
+          name = '🔌 Debug: Attach to Custom Port',
           address = 'localhost',
-          port = 9229,
+          port = function()
+            local port = vim.fn.input {
+              prompt = 'Enter debug port (default: 9229): ',
+              default = '9229',
+            }
+            if port == '' then
+              port = '9229'
+            end
+            return tonumber(port)
+          end,
           sourceMaps = true,
           -- Enhanced source map resolution for SvelteKit/Vite
           resolveSourceMapLocations = {
@@ -346,6 +354,23 @@ For server-side (+server.ts, API routes):
     dap.listeners.after.event_initialized['dapui_config'] = dapui.open
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
     dap.listeners.before.event_exited['dapui_config'] = dapui.close
+
+    -- Show helpful tips when attaching to any process
+    dap.listeners.before.attach['show_attach_tips'] = function()
+      vim.notify(
+        '💡 Debug Tips - Finding Your Running Process:\n\n'
+          .. '1. Check your terminal for the port number\n'
+          .. '   Example: "Server running on http://localhost:5000"\n\n'
+          .. '2. Find the process ID (PID):\n'
+          .. '   netstat -ano | findstr :<port>\n'
+          .. '   (Last number in output is the PID)\n\n'
+          .. '3. Verify the process:\n'
+          .. '   tasklist /FI "PID eq <PID>"\n\n'
+          .. '4. Select the matching process from the list',
+        vim.log.levels.INFO,
+        { title = 'DAP Attach Mode' }
+      )
+    end
 
     -- Install golang specific config
     require('dap-go').setup {
