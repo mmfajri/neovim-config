@@ -68,40 +68,44 @@ return {
             '<leader>fN',
             function()
               -- Try to get Fidget notification history directly
-              local fidget = require('fidget.notification')
+              local fidget = require 'fidget.notification'
               local history = fidget.get_history and fidget.get_history() or {}
-              
+
               if #history == 0 then
                 vim.notify('No Fidget notification history available', vim.log.levels.WARN)
                 return
               end
-              
+
               -- Create new buffer
-              vim.cmd('new')
+              vim.cmd 'new'
               local buf = vim.api.nvim_get_current_buf()
-              
+
               -- Set buffer options
-              vim.api.nvim_buf_set_option(buf, 'buftype', 'nofile')
-              vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
-              vim.api.nvim_buf_set_option(buf, 'swapfile', false)
+              vim.api.nvim_set_option_value('buftype', 'nofile', { buf = buf })
+              vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = buf })
+              vim.api.nvim_set_option_value('swapfile', false, { buf = buf })
               vim.api.nvim_buf_set_name(buf, 'Fidget-History')
-              
-              -- Format history entries
+
+              -- Format history entries - aggressively strip ALL newlines
               local lines = {}
               for i, notif in ipairs(history) do
                 local msg = type(notif) == 'table' and notif.message or tostring(notif)
-                -- Split messages with newlines into separate lines
-                for line in msg:gmatch('[^\r\n]+') do
-                  table.insert(lines, string.format('[%d] %s', i, line))
-                end
+                -- Replace all newlines/carriage returns with spaces
+                msg = msg:gsub('[\r\n]+', ' ')
+                -- Collapse multiple spaces
+                msg = msg:gsub('%s+', ' ')
+                -- Trim leading/trailing whitespace
+                msg = msg:match '^%s*(.-)%s*$' or ''
+
+                table.insert(lines, string.format('[%d] %s', i, msg))
               end
-              
+
               -- Add content BEFORE making it read-only
               vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-              
+
               -- NOW make it read-only
-              vim.api.nvim_buf_set_option(buf, 'modifiable', false)
-              
+              vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
+
               vim.notify('Fidget history opened! Use visual mode to copy.', vim.log.levels.INFO)
             end,
             desc = 'Open Fidget history in copyable buffer',
@@ -151,6 +155,7 @@ return {
       })
 
       -- Diagnostic configuration
+      -- ...existing code...
       vim.diagnostic.config {
         severity_sort = true,
         float = { border = 'rounded', source = 'if_many' },
@@ -167,10 +172,19 @@ return {
           source = 'if_many',
           spacing = 2,
           format = function(diagnostic)
-            return diagnostic.message
+            local msg = diagnostic.message or ''
+            -- use first line only, remove CR, collapse whitespace
+            msg = msg:gsub('\r', ''):match '^[^\n]+' or ''
+            msg = msg:gsub('%s+', ' ')
+            -- optional: truncate long messages
+            if #msg > 120 then
+              msg = msg:sub(1, 117) .. '...'
+            end
+            return msg
           end,
         },
       }
+      -- ...existing code...
 
       -- LSP capabilities (with blink.cmp)
       local capabilities = require('blink.cmp').get_lsp_capabilities()
@@ -186,7 +200,6 @@ return {
             },
           },
         },
-
       }
 
       -- Ensure LSP servers are installed
