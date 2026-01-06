@@ -170,7 +170,10 @@ For server-side (+server.ts, API routes):
 
       -- You can provide additional configuration to the handlers,
       -- see mason-nvim-dap README for more information
-      handlers = {},
+      handlers = {
+        -- Disable auto-config for C# (we'll configure it manually below)
+        coreclr = function() end,
+      },
 
       -- You'll need to check that you have the required things installed
       -- online, please don't ask me how to install them :)
@@ -184,97 +187,137 @@ For server-side (+server.ts, API routes):
 
     -- Verify js-debug is built
     local vsDebugServer = js_debug_path .. '/out/src/vsDebugServer.js'
-    if not vim.loop.fs_stat(vsDebugServer) then
-      vim.notify('vscode-js-debug not built! Run: cd ' .. js_debug_path .. ' && npm run compile vsDebugServerBundle', vim.log.levels.ERROR)
-      return
-    end
-
-    -- Manually configure adapters (more reliable than dap-vscode-js auto-setup)
-    for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
-      dap.adapters[adapter] = {
-        type = 'server',
-        host = '127.0.0.1',
-        port = '${port}',
-        executable = {
-          command = 'node',
-          args = { vsDebugServer, '${port}' },
-        },
-      }
-    end
-
-    -- Increase timeout for slow Windows systems
-    dap.defaults.fallback.timeout = 60000
-
-    for _, language in ipairs { 'typescript', 'javascript', 'svelte' } do
-      require('dap').configurations[language] = {
-        -- Server-side debugging only (no external browser process needed)
-        {
-          type = 'pwa-node',
-          request = 'launch',
-          name = '🚀 Debug: Launch File (Node)',
-          program = '${file}',
-          cwd = '${workspaceFolder}',
-          sourceMaps = true,
-          skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
-        },
-        -- Server-side debugging: Attach to running Vite/Node server
-        {
-          type = 'pwa-node',
-          request = 'attach',
-          name = '⚙️ Debug: Attach to Node/Vite Process',
-          processId = function()
-            -- Filter to show only node.exe processes
-            return require('dap.utils').pick_process { filter = 'node' }
-          end,
-          sourceMaps = true,
-          resolveSourceMapLocations = {
-            '${workspaceFolder}/**',
-            '!**/node_modules/**',
+    if vim.loop.fs_stat(vsDebugServer) then
+      -- Only configure JS debugging if vscode-js-debug is built
+      -- Manually configure adapters (more reliable than dap-vscode-js auto-setup)
+      for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
+        dap.adapters[adapter] = {
+          type = 'server',
+          host = '127.0.0.1',
+          port = '${port}',
+          executable = {
+            command = 'node',
+            args = { vsDebugServer, '${port}' },
           },
-          cwd = '${workspaceFolder}',
-          skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
-          timeout = 60000,
-        },
-        {
-          type = 'pwa-node',
-          request = 'attach',
-          name = '🔌 Debug: Attach to Port 9229',
-          address = 'localhost',
-          port = 9229,
-          sourceMaps = true,
-          -- Enhanced source map resolution for SvelteKit/Vite
-          resolveSourceMapLocations = {
-            '${workspaceFolder}/**',
-            '!**/node_modules/**',
-            '!**/.svelte-kit/**',
+        }
+      end
+
+      -- Increase timeout for slow Windows systems
+      dap.defaults.fallback.timeout = 60000
+
+      for _, language in ipairs { 'typescript', 'javascript', 'svelte' } do
+        require('dap').configurations[language] = {
+          -- Server-side debugging only (no external browser process needed)
+          {
+            type = 'pwa-node',
+            request = 'launch',
+            name = '🚀 Debug: Launch File (Node)',
+            program = '${file}',
+            cwd = '${workspaceFolder}',
+            sourceMaps = true,
+            skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
           },
-          outFiles = {
-            '${workspaceFolder}/**/*.js',
-            '${workspaceFolder}/.svelte-kit/**/*.js',
+          -- Debug npm/yarn scripts (dev, start, etc.)
+          {
+            type = 'pwa-node',
+            request = 'launch',
+            name = '📦 Debug: npm run dev',
+            runtimeExecutable = 'npm',
+            runtimeArgs = { 'run', 'dev' },
+            cwd = '${workspaceFolder}',
+            sourceMaps = true,
+            resolveSourceMapLocations = {
+              '${workspaceFolder}/**',
+              '!**/node_modules/**',
+            },
+            skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
+            console = 'integratedTerminal',
+            restart = true,
           },
-          cwd = '${workspaceFolder}',
-          skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
-          restart = true,
-          timeout = 60000,
-          -- Enable all debugging features
-          trace = true,
-          verboseDiagnosticLogging = true,
-        },
-        -- only if language is javascript, offer this debug action
-        language == 'javascript'
-            and {
-              -- use nvim-dap-vscode-js's pwa-node debug adapter
-              type = 'pwa-node',
-              -- launch a new process to attach the debugger to
-              request = 'launch',
-              -- name of the debug action you have to select for this config
-              name = 'Launch file in new node process',
-              -- launch current file
-              program = '${file}',
-              cwd = '${workspaceFolder}',
-            }
-          or nil,
-      }
+          {
+            type = 'pwa-node',
+            request = 'launch',
+            name = '📦 Debug: npm start',
+            runtimeExecutable = 'npm',
+            runtimeArgs = { 'start' },
+            cwd = '${workspaceFolder}',
+            sourceMaps = true,
+            resolveSourceMapLocations = {
+              '${workspaceFolder}/**',
+              '!**/node_modules/**',
+            },
+            skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
+            console = 'integratedTerminal',
+          },
+          -- Server-side debugging: Attach to running Vite/Node server
+          {
+            type = 'pwa-node',
+            request = 'attach',
+            name = '⚙️ Debug: Attach to Node/Vite Process',
+            processId = function()
+              return require('dap.utils').pick_process { filter = 'node' }
+            end,
+            sourceMaps = true,
+            resolveSourceMapLocations = {
+              '${workspaceFolder}/**',
+              '!**/node_modules/**',
+            },
+            cwd = '${workspaceFolder}',
+            skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
+            timeout = 60000,
+          },
+          {
+            type = 'pwa-node',
+            request = 'attach',
+            name = '🔌 Debug: Attach to Custom Port',
+            address = 'localhost',
+            port = function()
+              local port = vim.fn.input {
+                prompt = 'Enter debug port (default: 9229): ',
+                default = '9229',
+              }
+              if port == '' then
+                port = '9229'
+              end
+              return tonumber(port)
+            end,
+            sourceMaps = true,
+            -- Enhanced source map resolution for SvelteKit/Vite
+            resolveSourceMapLocations = {
+              '${workspaceFolder}/**',
+              '!**/node_modules/**',
+              '!**/.svelte-kit/**',
+            },
+            outFiles = {
+              '${workspaceFolder}/**/*.js',
+              '${workspaceFolder}/.svelte-kit/**/*.js',
+            },
+            cwd = '${workspaceFolder}',
+            skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
+            restart = true,
+            timeout = 60000,
+            -- Enable all debugging features
+            trace = true,
+            verboseDiagnosticLogging = true,
+          },
+          -- only if language is javascript, offer this debug action
+          language == 'javascript'
+              and {
+                -- use nvim-dap-vscode-js's pwa-node debug adapter
+                type = 'pwa-node',
+                -- launch a new process to attach the debugger to
+                request = 'launch',
+                -- name of the debug action you have to select for this config
+                name = 'Launch file in new node process',
+                -- launch current file
+                program = '${file}',
+                cwd = '${workspaceFolder}',
+              }
+            or nil,
+        }
+      end
+    else
+      vim.notify('vscode-js-debug not built. JavaScript/TypeScript debugging disabled.', vim.log.levels.WARN)
     end
 
     -- Dap UI setup
@@ -314,6 +357,28 @@ For server-side (+server.ts, API routes):
     dap.listeners.after.event_initialized['dapui_config'] = dapui.open
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
     dap.listeners.before.event_exited['dapui_config'] = dapui.close
+    
+    -- Also close DAP UI when disconnecting
+    dap.listeners.after.disconnect['dapui_config'] = function()
+      dapui.close()
+    end
+
+    -- Show helpful tips when attaching to any process
+    dap.listeners.before.attach['show_attach_tips'] = function()
+      vim.notify(
+        '💡 Debug Tips - Finding Your Running Process:\n\n'
+          .. '1. Check your terminal for the port number\n'
+          .. '   Example: "Server running on http://localhost:5000"\n\n'
+          .. '2. Find the process ID (PID):\n'
+          .. '   netstat -ano | findstr :<port>\n'
+          .. '   (Last number in output is the PID)\n\n'
+          .. '3. Verify the process:\n'
+          .. '   tasklist /FI "PID eq <PID>"\n\n'
+          .. '4. Select the matching process from the list',
+        vim.log.levels.INFO,
+        { title = 'DAP Attach Mode' }
+      )
+    end
 
     -- Install golang specific config
     require('dap-go').setup {
@@ -337,29 +402,99 @@ For server-side (+server.ts, API routes):
     dap.configurations.cs = {
       {
         type = 'coreclr',
-        name = 'Launch - .NET Core',
+        name = '🚀 Launch - .NET Core',
         request = 'launch',
         program = function()
           local cwd = vim.fn.getcwd()
-          -- Find the main project DLL (not dependencies)
-          local project_name = vim.fn.fnamemodify(cwd, ':t')
-          local dll = vim.fn.glob(cwd .. '/bin/Debug/**/' .. project_name .. '.dll')
-          if dll == '' then
-            -- Fallback: try to find any DLL with the project directory name
-            dll = vim.fn.glob(cwd .. '/bin/Debug/**/pos_api_app.dll')
+          
+          -- Find .csproj to get project name
+          local csproj = vim.fn.glob(cwd .. '/*.csproj')
+          if csproj == '' then
+            vim.notify('No .csproj found. Run: dotnet build', vim.log.levels.ERROR)
+            return nil
           end
-          if dll ~= '' then
-            -- Take first match if multiple
-            return vim.split(dll, '\n')[1]
+          
+          local project_name = vim.fn.fnamemodify(vim.split(csproj, '\n')[1], ':t:r')
+          
+          -- Search for project DLL in common paths
+          local patterns = {
+            cwd .. '/bin/Debug/net9.0/' .. project_name .. '.dll',
+            cwd .. '/bin/Debug/net8.0/' .. project_name .. '.dll',
+            cwd .. '/bin/Debug/net7.0/' .. project_name .. '.dll',
+            cwd .. '/bin/Debug/net6.0/' .. project_name .. '.dll',
+            cwd .. '/bin/Release/net9.0/' .. project_name .. '.dll',
+            cwd .. '/bin/Release/net8.0/' .. project_name .. '.dll',
+          }
+          
+          for _, pattern in ipairs(patterns) do
+            if vim.fn.filereadable(pattern) == 1 then
+              vim.notify('✅ Found: ' .. project_name .. '.dll', vim.log.levels.INFO)
+              return pattern
+            end
           end
-          return vim.fn.input('Path to dll: ', cwd .. '/bin/Debug/', 'file')
+          
+          -- If not found, search for any non-dependency DLL
+          vim.notify('⚠️  ' .. project_name .. '.dll not found. Searching for main DLL...', vim.log.levels.WARN)
+          local all_dlls = vim.fn.glob(cwd .. '/bin/Debug/**/*.dll')
+          
+          if all_dlls == '' then
+            vim.notify('❌ No DLLs found. Run: dotnet build', vim.log.levels.ERROR)
+            return nil
+          end
+          
+          local dll_list = vim.split(all_dlls, '\n')
+          local main_dlls = {}
+          
+          -- Filter: Keep only YOUR project DLLs (exclude dependencies)
+          for _, path in ipairs(dll_list) do
+            local filename = vim.fn.fnamemodify(path, ':t')
+            local is_dependency = filename:match('^Microsoft%.') 
+                               or filename:match('^System%.') 
+                               or filename:match('^netstandard%.') 
+                               or filename:match('^Newtonsoft%.') 
+                               or filename:match('^Dapper%.') 
+                               or filename:match('^AutoMapper%.')
+                               or filename:match('^Swashbuckle%.')
+                               or filename:match('%.resources%.dll$')
+            
+            if not is_dependency then
+              table.insert(main_dlls, path)
+            end
+          end
+          
+          if #main_dlls == 0 then
+            vim.notify('❌ No project DLL found (only dependencies)', vim.log.levels.ERROR)
+            return nil
+          end
+          
+          if #main_dlls == 1 then
+            vim.notify('✅ Found: ' .. vim.fn.fnamemodify(main_dlls[1], ':t'), vim.log.levels.INFO)
+            return main_dlls[1]
+          end
+          
+          -- Multiple project DLLs - let user choose
+          vim.notify('Multiple DLLs found. Select your main project:', vim.log.levels.INFO)
+          local choice = vim.fn.inputlist(
+            vim.list_extend(
+              { 'Select your project DLL:' },
+              vim.tbl_map(function(path)
+                return vim.fn.fnamemodify(path, ':t')
+              end, main_dlls)
+            )
+          )
+          
+          if choice > 0 and choice <= #main_dlls then
+            return main_dlls[choice]
+          end
+          
+          return nil
         end,
         cwd = '${workspaceFolder}',
         stopAtEntry = false,
       },
       {
         type = 'coreclr',
-        name = 'Attach to Running .NET Process',
+        name = '🔌 Attach to Running .NET Process',
         request = 'attach',
         processId = require('dap.utils').pick_process,
       },
