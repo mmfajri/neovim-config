@@ -86,6 +86,21 @@ require('lazy').setup({
   -- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
   -- you can continue same window with `<space>sr` which resumes last telescope search
 }, {
+  install = {
+    -- install missing plugins on startup. Can be disable by a "lazy" skip
+    missing = true,
+    -- try to load one of these colorschemes when starting an installation
+    colorscheme = { 'habamax' },
+  },
+  -- Increase timeout for slow builds and clones (like vscode-js-debug)
+  git = {
+    timeout = 300, -- seconds
+  },
+  pkg = {
+    -- the default is 120 seconds (2 minutes)
+    -- Increase to 5 minutes (300 seconds)
+    timeout = 300,
+  },
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
     -- default lazy.nvim defined Nerd Font icons, otherwise define a unicode icons table
