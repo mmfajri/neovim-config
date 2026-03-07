@@ -24,6 +24,22 @@ return {
     vim.g.lazygit_floating_window_scaling_factor = 0.9
     vim.g.lazygit_floating_window_border_chars = {'╭','─', '╮', '│', '╯','─', '╰', '│'}
     vim.g.lazygit_use_neovim_remote = 1
+    
+    -- Fix terminal keymapping issues
+    vim.g.lazygit_floating_window_use_plenary = 0
+    
+    -- Ensure terminal mode keymaps don't interfere
+    vim.api.nvim_create_autocmd('TermOpen', {
+      pattern = 'term://*lazygit*',
+      callback = function()
+        -- Clear any terminal mode mappings that might interfere
+        vim.keymap.set('t', '<Esc>', '<Esc>', { buffer = true, nowait = true })
+        vim.keymap.set('t', 'j', 'j', { buffer = true, nowait = true })
+        vim.keymap.set('t', 'k', 'k', { buffer = true, nowait = true })
+        vim.keymap.set('t', 'h', 'h', { buffer = true, nowait = true })
+        vim.keymap.set('t', 'l', 'l', { buffer = true, nowait = true })
+      end,
+    })
   end,
 }
 -- NOTE: LazyGit Config File : first windows --> press e
