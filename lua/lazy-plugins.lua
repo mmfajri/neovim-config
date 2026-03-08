@@ -47,6 +47,8 @@ require('lazy').setup({
   --
   require 'custom/plugins/lazygit',
 
+  -- require 'custom/plugins/toggleterm',
+
   require 'custom/plugins/numtostr',
 
   -- require 'custom/plugins/cmp',
