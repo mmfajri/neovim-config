@@ -399,98 +399,143 @@ For server-side (+server.ts, API routes):
       },
     }
 
+    -- Helper function to find .NET project DLL
+    local function find_dotnet_dll()
+      local cwd = vim.fn.getcwd()
+      
+      -- Find .csproj to get project name
+      local csproj = vim.fn.glob(cwd .. '/*.csproj')
+      if csproj == '' then
+        vim.notify('No .csproj found. Run: dotnet build', vim.log.levels.ERROR)
+        return nil
+      end
+      
+      local project_name = vim.fn.fnamemodify(vim.split(csproj, '\n')[1], ':t:r')
+      
+      -- Search for project DLL in common paths
+      local patterns = {
+        cwd .. '/bin/Debug/net9.0/' .. project_name .. '.dll',
+        cwd .. '/bin/Debug/net8.0/' .. project_name .. '.dll',
+        cwd .. '/bin/Debug/net7.0/' .. project_name .. '.dll',
+        cwd .. '/bin/Debug/net6.0/' .. project_name .. '.dll',
+        cwd .. '/bin/Release/net9.0/' .. project_name .. '.dll',
+        cwd .. '/bin/Release/net8.0/' .. project_name .. '.dll',
+      }
+      
+      for _, pattern in ipairs(patterns) do
+        if vim.fn.filereadable(pattern) == 1 then
+          vim.notify('✅ Found: ' .. project_name .. '.dll', vim.log.levels.INFO)
+          return pattern
+        end
+      end
+      
+      -- If not found, search for any non-dependency DLL
+      vim.notify('⚠️  ' .. project_name .. '.dll not found. Searching for main DLL...', vim.log.levels.WARN)
+      local all_dlls = vim.fn.glob(cwd .. '/bin/Debug/**/*.dll')
+      
+      if all_dlls == '' then
+        vim.notify('❌ No DLLs found. Run: dotnet build', vim.log.levels.ERROR)
+        return nil
+      end
+      
+      local dll_list = vim.split(all_dlls, '\n')
+      local main_dlls = {}
+      
+      -- Filter: Keep only YOUR project DLLs (exclude dependencies)
+      for _, path in ipairs(dll_list) do
+        local filename = vim.fn.fnamemodify(path, ':t')
+        local is_dependency = filename:match('^Microsoft%.') 
+                           or filename:match('^System%.') 
+                           or filename:match('^netstandard%.') 
+                           or filename:match('^Newtonsoft%.') 
+                           or filename:match('^Dapper%.') 
+                           or filename:match('^AutoMapper%.')
+                           or filename:match('^Swashbuckle%.')
+                           or filename:match('%.resources%.dll$')
+        
+        if not is_dependency then
+          table.insert(main_dlls, path)
+        end
+      end
+      
+      if #main_dlls == 0 then
+        vim.notify('❌ No project DLL found (only dependencies)', vim.log.levels.ERROR)
+        return nil
+      end
+      
+      if #main_dlls == 1 then
+        vim.notify('✅ Found: ' .. vim.fn.fnamemodify(main_dlls[1], ':t'), vim.log.levels.INFO)
+        return main_dlls[1]
+      end
+      
+      -- Multiple project DLLs - let user choose
+      vim.notify('Multiple DLLs found. Select your main project:', vim.log.levels.INFO)
+      local choice = vim.fn.inputlist(
+        vim.list_extend(
+          { 'Select your project DLL:' },
+          vim.tbl_map(function(path)
+            return vim.fn.fnamemodify(path, ':t')
+          end, main_dlls)
+        )
+      )
+      
+      if choice > 0 and choice <= #main_dlls then
+        return main_dlls[choice]
+      end
+      
+      return nil
+    end
+
     dap.configurations.cs = {
       {
         type = 'coreclr',
-        name = '🚀 Launch - .NET Core',
+        name = '🚀 Launch - .NET Web (Development)',
         request = 'launch',
-        program = function()
-          local cwd = vim.fn.getcwd()
-          
-          -- Find .csproj to get project name
-          local csproj = vim.fn.glob(cwd .. '/*.csproj')
-          if csproj == '' then
-            vim.notify('No .csproj found. Run: dotnet build', vim.log.levels.ERROR)
-            return nil
-          end
-          
-          local project_name = vim.fn.fnamemodify(vim.split(csproj, '\n')[1], ':t:r')
-          
-          -- Search for project DLL in common paths
-          local patterns = {
-            cwd .. '/bin/Debug/net9.0/' .. project_name .. '.dll',
-            cwd .. '/bin/Debug/net8.0/' .. project_name .. '.dll',
-            cwd .. '/bin/Debug/net7.0/' .. project_name .. '.dll',
-            cwd .. '/bin/Debug/net6.0/' .. project_name .. '.dll',
-            cwd .. '/bin/Release/net9.0/' .. project_name .. '.dll',
-            cwd .. '/bin/Release/net8.0/' .. project_name .. '.dll',
-          }
-          
-          for _, pattern in ipairs(patterns) do
-            if vim.fn.filereadable(pattern) == 1 then
-              vim.notify('✅ Found: ' .. project_name .. '.dll', vim.log.levels.INFO)
-              return pattern
-            end
-          end
-          
-          -- If not found, search for any non-dependency DLL
-          vim.notify('⚠️  ' .. project_name .. '.dll not found. Searching for main DLL...', vim.log.levels.WARN)
-          local all_dlls = vim.fn.glob(cwd .. '/bin/Debug/**/*.dll')
-          
-          if all_dlls == '' then
-            vim.notify('❌ No DLLs found. Run: dotnet build', vim.log.levels.ERROR)
-            return nil
-          end
-          
-          local dll_list = vim.split(all_dlls, '\n')
-          local main_dlls = {}
-          
-          -- Filter: Keep only YOUR project DLLs (exclude dependencies)
-          for _, path in ipairs(dll_list) do
-            local filename = vim.fn.fnamemodify(path, ':t')
-            local is_dependency = filename:match('^Microsoft%.') 
-                               or filename:match('^System%.') 
-                               or filename:match('^netstandard%.') 
-                               or filename:match('^Newtonsoft%.') 
-                               or filename:match('^Dapper%.') 
-                               or filename:match('^AutoMapper%.')
-                               or filename:match('^Swashbuckle%.')
-                               or filename:match('%.resources%.dll$')
-            
-            if not is_dependency then
-              table.insert(main_dlls, path)
-            end
-          end
-          
-          if #main_dlls == 0 then
-            vim.notify('❌ No project DLL found (only dependencies)', vim.log.levels.ERROR)
-            return nil
-          end
-          
-          if #main_dlls == 1 then
-            vim.notify('✅ Found: ' .. vim.fn.fnamemodify(main_dlls[1], ':t'), vim.log.levels.INFO)
-            return main_dlls[1]
-          end
-          
-          -- Multiple project DLLs - let user choose
-          vim.notify('Multiple DLLs found. Select your main project:', vim.log.levels.INFO)
-          local choice = vim.fn.inputlist(
-            vim.list_extend(
-              { 'Select your project DLL:' },
-              vim.tbl_map(function(path)
-                return vim.fn.fnamemodify(path, ':t')
-              end, main_dlls)
-            )
-          )
-          
-          if choice > 0 and choice <= #main_dlls then
-            return main_dlls[choice]
-          end
-          
-          return nil
-        end,
+        program = find_dotnet_dll,
         cwd = '${workspaceFolder}',
         stopAtEntry = false,
+        console = 'integratedTerminal',
+        justMyCode = false,
+        env = {
+          ASPNETCORE_ENVIRONMENT = 'Development',
+        },
+      },
+      {
+        type = 'coreclr',
+        name = '🏭 Launch - .NET Web (Production)',
+        request = 'launch',
+        program = find_dotnet_dll,
+        cwd = '${workspaceFolder}',
+        stopAtEntry = false,
+        console = 'integratedTerminal',
+        justMyCode = false,
+        env = {
+          ASPNETCORE_ENVIRONMENT = 'Production',
+        },
+      },
+      {
+        type = 'coreclr',
+        name = '🚀 Launch - .NET Console (Development)',
+        request = 'launch',
+        program = find_dotnet_dll,
+        cwd = '${workspaceFolder}',
+        stopAtEntry = false,
+        console = 'integratedTerminal',
+        env = {
+          ASPNETCORE_ENVIRONMENT = 'Development',
+        },
+      },
+      {
+        type = 'coreclr',
+        name = '🏭 Launch - .NET Console (Production)',
+        request = 'launch',
+        program = find_dotnet_dll,
+        cwd = '${workspaceFolder}',
+        stopAtEntry = false,
+        console = 'integratedTerminal',
+        env = {
+          ASPNETCORE_ENVIRONMENT = 'Production',
+        },
       },
       {
         type = 'coreclr',
