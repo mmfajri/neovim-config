@@ -244,3 +244,21 @@ sudo pacman -S --noconfirm --needed gcc make git ripgrep fd unzip neovim
 ```
 </details>
 
+
+
+---
+
+## ?? Debugging Documentation
+
+Comprehensive debugging guides for DAP (Debug Adapter Protocol) are available in the [docs/](docs/) folder.
+
+**Quick Links:**
+- [Simple Debug Guide](docs/SIMPLE-DEBUG-GUIDE.md) - Start here! F5 ? F6 workflow
+- [Client vs Server Debugging](docs/CLIENT-VS-SERVER-DEBUGGING.md) - Important! When to use Browser vs Neovim
+- [All Documentation](docs/README.md) - Complete guide index
+
+**Quick Start:**
+- TypeScript/JavaScript/Svelte frontend ? Use Browser DevTools (F12)
+- SvelteKit server routes ? Press F5, then F6 in Neovim
+- .NET/C# debugging ? Press F5, select your environment
+

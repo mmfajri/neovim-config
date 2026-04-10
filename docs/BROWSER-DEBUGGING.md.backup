@@ -1,0 +1,307 @@
+# 🌐 Browser Debugging in Neovim
+
+## Debug Client-Side JavaScript Directly in Neovim!
+
+**New two-step workflow:** Press `F8` to get Chrome command, then `Shift+F8` to attach! 🎉
+
+This workflow prevents the infinite loading issue by letting Chrome start normally before attaching the debugger.
+
+---
+
+## ⚡ Super Quick Start
+
+### Debug Your Login in 4 Steps:
+
+1. **Start server:** `npm run dev`
+2. **In Neovim, press `F8`** ← Get Chrome launch command (copied to clipboard!)
+3. **Paste in PowerShell** ← Chrome opens normally
+4. **Press `Shift+F8`** ← Debugger attaches, you're debugging!
+
+No infinite loading, no crashes! 🎉
+
+---
+
+## ✨ Keybindings
+
+| Key | What It Does |
+|-----|-------------|
+| **F8** | Get Chrome command (copies to clipboard) |
+| **Shift+F8** | Attach debugger to Chrome |
+| **F5** | Server debugging (Node.js/SvelteKit) |
+| **F6** | Attach to running server |
+
+---
+
+## 🚀 Complete Workflow
+
+### Step 1: Start Your Dev Server
+
+```powershell
+cd "C:\Users\900363\Documents\My Web Sites\pos-app\pos_web_app_sv"
+npm run dev
+```
+Wait for: `➜  Local:   http://localhost:5173/`
+
+### Step 2: Open Neovim and Set Breakpoints
+
+```powershell
+nvim .
+```
+
+Navigate to your file (e.g., `src/lib/controllers/AuthController.ts`):
+```lua
+:e src/lib/controllers/AuthController.ts
+```
+
+Set a breakpoint on the login function:
+- Move cursor to the line: `const response = await fetch(...)`
+- Press **`<leader>b`** to toggle breakpoint
+- You'll see a red dot appear!
+
+### Step 3: Get Chrome Command (F8)
+
+Press **`F8`** in Neovim:
+- Enter port when prompted (default: 5173)
+- Notification shows Chrome launch command
+- **Command is automatically copied to clipboard!**
+
+### Step 4: Launch Chrome
+
+In a PowerShell terminal, paste and run:
+```powershell
+chrome --remote-debugging-port=9222 --user-data-dir="%TEMP%/chrome-debug" http://localhost:5173
+```
+
+Chrome opens with your app loading **normally** (no infinite reload!).
+
+> **Tip:** If `chrome` command not found, use full path:
+> ```powershell
+> "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="%TEMP%/chrome-debug" http://localhost:5173
+> ```
+
+### Step 5: Attach Debugger (Shift+F8)
+
+Back in Neovim, press **`Shift+F8`**:
+- DAP UI opens
+- Debugger connects to Chrome
+- You're ready to debug!
+
+### Step 6: Trigger Your Code
+
+In the Chrome browser:
+- Navigate to the login page
+- Fill in the form
+- Click "Login"
+
+**Boom!** Execution pauses in Neovim at your breakpoint! 🎯
+
+---
+   ```vim
+   :e src/lib/controllers/AuthController.ts
+   ```
+
+4. **Set breakpoint:**
+   - Navigate to the line you want to debug (e.g., line 25 with `fetch()`)
+   - Press `<leader>b` to toggle breakpoint
+   - You'll see a red dot ● in the gutter
+
+5. **Press `F8`** ← **This is the magic button!**
+
+6. **Enter port:**
+   - Default: `5173` (Vite default)
+   - Press Enter
+
+7. **Chrome opens automatically!**
+   - Browser window opens to http://localhost:5173
+   - Your app loads
+
+8. **Trigger the code:**
+   - Go to login page in browser
+   - Fill in credentials
+   - Click "Login" button
+
+9. **Breakpoint hits in Neovim!** ✅
+    - Neovim pauses execution
+    - DAP UI panels open
+    - Current line is highlighted
+
+10. **Debug!**
+    - **F10** = Step over (next line)
+    - **F11** = Step into function
+    - **Shift+F11** = Step out
+    - **F5** = Continue to next breakpoint
+    - **F7** = Toggle DAP UI
+    - Hover over variables to see values
+    - Use DAP-REPL to evaluate expressions
+
+---
+
+## 🆚 Browser Debugging vs Server Debugging
+
+### Browser Debugging (NEW!)
+**When to use:** Debugging client-side code
+- `src/lib/controllers/AuthController.ts` ✅
+- `src/lib/components/*.svelte` ✅
+- Any code that runs in the browser ✅
+
+**How:**
+1. Press F5
+2. Select: `🌐 Launch Chrome/Edge`
+3. Set breakpoints in Neovim
+4. Interact with app in browser
+5. Debug in Neovim!
+
+### Server Debugging (Existing)
+**When to use:** Debugging server-side code
+- `src/routes/**/+server.ts` ✅
+- `src/routes/**/+page.server.ts` ✅
+- SvelteKit hooks ✅
+
+**How:**
+1. Press F5 (starts server)
+2. Press F6 (attaches debugger)
+3. Set breakpoints
+4. Trigger server code
+5. Debug in Neovim!
+
+---
+
+## 💡 Pro Tips
+
+### 1. **Keep Dev Server Running**
+Start `npm run dev` in a separate terminal and leave it running. Then just use F5 to launch the browser debugger.
+
+### 2. **Close Browser When Done**
+After debugging, close the Chrome/Edge window. The browser was launched with special debugging flags.
+
+### 3. **Use Browser DevTools Too**
+You can still use F12 in the launched browser! Network tab, Console tab, etc. all work normally.
+
+### 4. **Debugging Frontend + Backend Together**
+
+To debug both client and server:
+1. Start dev server with inspect: `npm --node-options --inspect run dev`
+2. Press F5 → Select server attach config → Set server breakpoints
+3. Press F5 again → Select `🌐 Launch Chrome` → Set client breakpoints
+4. Now you can debug both sides!
+
+---
+
+## 🐛 Troubleshooting
+
+### "Chrome didn't open" or "Connection refused"
+
+**Check:**
+- Is dev server actually running? (`npm run dev`)
+- Is port 9222 available? (Close other debugging sessions)
+- Try restarting Neovim
+
+**Solution:**
+```bash
+# Kill any Chrome debugging instances
+taskkill /F /IM chrome.exe
+# Try again
+```
+
+### Breakpoints not hitting
+
+**Remember:**
+- Breakpoints only work in **SOURCE** files (`.ts`, `.svelte`)
+- Not in compiled/bundled code
+- Make sure sourceMaps are working (check if you see mapping errors)
+
+**Try:**
+- Refresh the browser page
+- Press F5 (continue) in Neovim
+- Check that the file path in Neovim matches what Vite is serving
+
+### "Port 9222 already in use"
+
+Another browser debug session is running.
+
+**Solution:**
+```bash
+# Windows
+netstat -ano | findstr :9222
+taskkill /F /PID <PID from above>
+
+# Then try again
+```
+
+### Console.log() not showing in Neovim
+
+Console logs appear in the **browser console**, not Neovim.
+- Press F12 in the launched browser
+- Go to Console tab
+- Logs appear there
+
+---
+
+## 🎮 Complete Workflow Example
+
+**Scenario:** Debug login function in AuthController.ts
+
+1. **Setup:**
+   ```bash
+   cd pos_web_app_sv
+   npm run dev        # Terminal 1
+   nvim .             # Terminal 2
+   ```
+
+2. **In Neovim:**
+   ```vim
+   :e src/lib/controllers/AuthController.ts
+   " Navigate to line 25 (or wherever you want to debug)
+   <leader>b          " Set breakpoint
+   F5                 " Start debugging
+   " Select: 🌐 Launch Chrome
+   " Enter port: 5173
+   ```
+
+3. **In Browser (auto-opened):**
+   - Navigate to login page
+   - Fill username/password
+   - Click "Login"
+
+4. **Back in Neovim:**
+   - Execution pauses at breakpoint!
+   - F10 to step through
+   - Inspect `credentials` variable
+   - See the `fetch()` call
+   - F5 to continue
+
+5. **Done!**
+
+---
+
+## 🎯 Quick Reference
+
+| Task | Keybinding |
+|------|------------|
+| Set/remove breakpoint | `<leader>b` |
+| Start debugging | `F5` |
+| Step over | `F10` |
+| Step into | `F11` |
+| Step out | `Shift+F11` |
+| Continue | `F5` (while debugging) |
+| Toggle DAP UI | `F7` |
+
+**Debug Configs:**
+- `🌐 Launch Chrome` = Debug client-side in Chrome
+- `🌐 Launch Edge` = Debug client-side in Edge
+- `🌟 All-in-One` = Debug server-side (auto-start)
+- `🔗 Attach` = Debug server-side (manual start)
+
+---
+
+## 🎉 Summary
+
+**Now you have 3 ways to debug your code:**
+
+1. **Browser DevTools (F12)** - Still works, still useful!
+2. **Neovim DAP (Browser)** - Debug client-side code in Neovim (NEW!)
+3. **Neovim DAP (Server)** - Debug server-side code in Neovim (Existing)
+
+Choose whatever workflow you prefer! All are valid approaches! 🚀
+
+Happy debugging! 🐛🔨

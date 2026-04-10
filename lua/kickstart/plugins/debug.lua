@@ -28,17 +28,295 @@ return {
     {
       'microsoft/vscode-js-debug',
       version = '1.x',
-      build = 'npm i && npm run compile vsDebugServerBundle && mv dist out',
+      build = function()
+        -- Cross-platform build command for Windows/Unix
+        local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+        if is_windows then
+          -- Windows PowerShell commands
+          vim.fn.system('npm install --force')
+          vim.fn.system('npm run compile vsDebugServerBundle')
+          -- Windows move command
+          if vim.fn.isdirectory('dist') == 1 then
+            vim.fn.system('if exist out rmdir /s /q out')
+            vim.fn.system('move dist out')
+          end
+        else
+          -- Unix/Linux commands
+          vim.fn.system('npm i && npm run compile vsDebugServerBundle && mv dist out')
+        end
+      end,
     },
   },
   keys = {
-    -- Basic debugging keymaps, feel free to change to your liking!
+    -- Custom F5: Auto-start dev server if needed, then debug
     {
       '<F5>',
       function()
+        local dap = require('dap')
+        
+        -- If already debugging, just continue
+        if dap.session() then
+          dap.continue()
+          return
+        end
+        
+        -- Check if this is a JS/TS/Svelte project
+        local cwd = vim.fn.getcwd()
+        local package_json = cwd .. '/package.json'
+        
+        if vim.fn.filereadable(package_json) == 1 then
+          -- Check if dev server is already running on port 9229
+          local check_port_cmd = 'netstat -ano | findstr ":9229.*LISTENING"'
+          local port_check = vim.fn.system(check_port_cmd)
+          
+          if port_check == '' or port_check:match('^%s*$') then
+            -- Server not running - start it!
+            vim.notify(
+              '🚀 Starting dev server...\n\n' ..
+              'Wait for "Local: http://localhost:5173/" message\n' ..
+              'Then press F5 again to attach debugger!',
+              vim.log.levels.INFO,
+              { title = 'Auto-Start Dev Server', timeout = 5000 }
+            )
+            
+            -- Open terminal and start server
+            vim.cmd('split')
+            vim.cmd('resize 15')
+            vim.cmd('terminal')
+            
+            local term_id = vim.b.terminal_job_id
+            vim.fn.chansend(term_id, 'cd "' .. cwd .. '"\r')
+            vim.fn.chansend(term_id, 'npm run dev\r')
+            
+            -- Don't auto-attach, let user press F5 again when ready
+          else
+            -- Server is running - attach debugger
+            vim.notify('✅ Server detected! Attaching debugger...', vim.log.levels.INFO)
+            
+            -- Directly run attach config (don't rely on filetype)
+            dap.run({
+              type = 'pwa-node',
+              request = 'attach',
+              name = 'Attach to Dev Server',
+              address = 'localhost',
+              port = 9229,
+              sourceMaps = true,
+              protocol = 'inspector',
+              skipFiles = { '<node_internals>/**', '**/node_modules/**' },
+              resolveSourceMapLocations = {
+                cwd .. '/**',
+                '!**/node_modules/**',
+              },
+              cwd = cwd,
+            })
+            
+            -- Force open DAP UI
+            local dapui = require('dapui')
+            vim.defer_fn(function()
+              dapui.open()
+            end, 500)
+          end
+        else
+          -- Not a JS project, use normal continue
+          dap.continue()
+        end
+      end,
+      desc = 'Debug: Smart Start (auto-starts dev server if needed)',
+    },
+    -- F6: Simple attach (use this after server starts!)
+    {
+      '<F6>',
+      function()
+        local dap = require('dap')
+        local dapui = require('dapui')
+        
+        -- Force attach to port 9229 (where npm run dev with --inspect listens)
+        vim.notify('Attaching debugger to port 9229...', vim.log.levels.INFO)
+        
+        -- Manually create attach config and run it
+        dap.run({
+          type = 'pwa-node',
+          request = 'attach',
+          name = 'Attach to port 9229',
+          address = 'localhost',
+          port = 9229,
+          sourceMaps = true,
+          protocol = 'inspector',
+          skipFiles = { '<node_internals>/**', '**/node_modules/**' },
+          cwd = vim.fn.getcwd(),
+        })
+        
+        -- Force open DAP UI
+        vim.defer_fn(function()
+          dapui.open()
+        end, 500)
+      end,
+      desc = 'Debug: Attach to Dev Server (port 9229)',
+    },
+    -- F8: Launch Chrome for browser debugging
+    {
+      '<F8>',
+      function()
+        local port = vim.fn.input {
+          prompt = 'Enter dev server port (default: 5173): ',
+          default = '5173',
+        }
+        if port == '' then
+          port = '5173'
+        end
+        
+        local url = 'http://localhost:' .. port
+        
+        -- Check if server is running
+        local check_cmd = 'powershell -Command "Test-NetConnection -ComputerName localhost -Port ' .. port .. ' -InformationLevel Quiet"'
+        local is_running = vim.fn.system(check_cmd):match('True')
+        
+        if not is_running then
+          vim.notify(
+            '⚠️  Dev server is NOT running on port ' .. port .. '!\n\n' ..
+            'Start it first: npm run dev',
+            vim.log.levels.ERROR,
+            { timeout = 5000 }
+          )
+          return
+        end
+        
+        -- Find Chrome executable
+        local chrome_paths = {
+          'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+          'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+          os.getenv('LOCALAPPDATA') .. '\\Google\\Chrome\\Application\\chrome.exe',
+        }
+        
+        local chrome_exe = nil
+        for _, path in ipairs(chrome_paths) do
+          if vim.fn.filereadable(path) == 1 then
+            chrome_exe = path
+            break
+          end
+        end
+        
+        if not chrome_exe then
+          vim.notify(
+            '❌ Chrome not found!\n\n' ..
+            'Install Chrome or use Browser DevTools (F12) instead.',
+            vim.log.levels.ERROR,
+            { timeout = 5000 }
+          )
+          return
+        end
+        
+        -- Launch Chrome with debugging
+        local user_data_dir = vim.fn.tempname()
+        local cmd = string.format(
+          'powershell -Command "Start-Process \'%s\' -ArgumentList \'--remote-debugging-port=9222\',\'--user-data-dir=%s\',\'%s\'"',
+          chrome_exe,
+          user_data_dir,
+          url
+        )
+        
+        vim.fn.system(cmd)
+        
+        vim.notify(
+          '🌐 Chrome launching...\n\n' ..
+          'Once Chrome opens and loads:\n' ..
+          'Press Shift+F8 to attach debugger',
+          vim.log.levels.INFO,
+          { timeout = 5000 }
+        )
+      end,
+      desc = 'Debug: Launch Chrome',
+    },
+    
+    -- Shift+F8: Attach/Re-attach to Chrome
+    {
+      '<S-F8>',
+      function()
+        local dap = require('dap')
+        local dapui = require('dapui')
+        local cwd = vim.fn.getcwd()
+        
+        -- Stop existing session if running
+        if dap.session() then
+          vim.notify('⏹️  Stopping old session...', vim.log.levels.INFO)
+          dap.terminate()
+          vim.defer_fn(function()
+            dap.close()
+          end, 500)
+          vim.defer_fn(function()
+            -- Re-attach after stopping
+            vim.notify('🔗 Re-attaching to Chrome...', vim.log.levels.INFO)
+            dap.run({
+              type = 'pwa-chrome',
+              request = 'attach',
+              name = 'Attach to Chrome',
+              port = 9222,
+              webRoot = cwd,
+              sourceMaps = true,
+              sourceMapPathOverrides = {
+                ['webpack:///./src/*'] = cwd .. '/src/*',
+                ['webpack:///./*'] = cwd .. '/*',
+                ['webpack:///*'] = '*',
+                ['webpack:///src/*'] = cwd .. '/src/*',
+              },
+            })
+            vim.defer_fn(function()
+              dapui.open()
+              vim.notify(
+                '✅ Re-attached! Reload page now\n\n' ..
+                '• Ctrl+R in Chrome to reload\n' ..
+                '• Breakpoints should work\n' ..
+                '• Press F7 if DAP UI not visible',
+                vim.log.levels.INFO,
+                { timeout = 100000 }
+              )
+            end, 1500)
+          end, 1000)
+        else
+          -- Fresh attach
+          vim.notify('🔗 Attaching to Chrome...', vim.log.levels.INFO)
+          
+          -- Force open DAP UI first
+          dapui.open()
+          
+          dap.run({
+            type = 'pwa-chrome',
+            request = 'attach',
+            name = 'Attach to Chrome',
+            port = 9222,
+            webRoot = cwd,
+            sourceMaps = true,
+            sourceMapPathOverrides = {
+              ['webpack:///./src/*'] = cwd .. '/src/*',
+              ['webpack:///./*'] = cwd .. '/*',
+              ['webpack:///*'] = '*',
+              ['webpack:///src/*'] = cwd .. '/src/*',
+            },
+          })
+          
+          vim.defer_fn(function()
+            -- Open again in case it didn't auto-open
+            dapui.open()
+            vim.notify(
+              '✅ Attached to Chrome!\n\n' ..
+              '• Reload page to hit breakpoints (Ctrl+R)\n' ..
+              '• If breakpoints stop: Shift+F8 to re-attach\n' ..
+              '• Press F7 to toggle DAP UI',
+              vim.log.levels.INFO,
+              { timeout = 6000 }
+            )
+          end, 2000)
+        end
+      end,
+      desc = 'Debug: Attach/Re-attach to Chrome',
+    },
+    -- Shift+F8: Show debug config picker (manual selection)
+    {
+      '<S-F8>',
+      function()
         require('dap').continue()
       end,
-      desc = 'Debug: Start/Continue',
+      desc = 'Debug: Show Configuration Picker',
     },
     {
       '<C-F11>',
@@ -110,12 +388,27 @@ return {
     {
       '<leader>ds',
       function()
-        -- Start dev server with debugging enabled in a terminal
-        vim.cmd 'tabnew'
-        vim.cmd 'term NODE_OPTIONS="--inspect" npm run dev'
-        vim.notify('Dev server starting with debugging on port 9229\nNow press <F5> to attach debugger', vim.log.levels.INFO)
+        -- Start dev server in terminal for manual debugging
+        local cwd = vim.fn.getcwd()
+        vim.cmd 'split'
+        vim.cmd 'terminal'
+        vim.cmd 'resize 15'
+        
+        -- Change to project directory and start server
+        local cmd = string.format('cd "%s" && npm run dev', cwd)
+        vim.fn.chansend(vim.b.terminal_job_id, cmd .. '\r')
+        
+        vim.notify(
+          '🚀 Dev server starting...\n\n' ..
+          'Wait 5-10 seconds, then:\n' ..
+          '1. Press F5\n' ..
+          '2. Select "🔗 Quick Attach: Port 9229"\n\n' ..
+          'Check terminal above for server URL!',
+          vim.log.levels.INFO,
+          { title = 'Manual Debug Start', timeout = 8000 }
+        )
       end,
-      desc = 'Debug: Start Dev Server (with --inspect)',
+      desc = 'Debug: Start Dev Server in Terminal',
     },
     {
       '<leader>dp',
@@ -138,22 +431,88 @@ return {
       function()
         vim.notify(
           [[
-Use Browser DevTools for client-side debugging:
-1. Open browser (any browser) to http://localhost:5173
-2. Press F12 to open DevTools
-3. Set breakpoints in Sources tab
-4. Code in Neovim, debug in browser
+🌐 WEB DEBUGGING - DEAD SIMPLE:
 
-For server-side (+server.ts, API routes):
-1. Run: npm run dev:debug
-2. Press F5 in Neovim
-3. Select "⚙️ Debug: SvelteKit Server"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✨ ONE-STEP DEBUG (EASIEST) ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Open your Svelte/JS/TS project in Neovim
+2. Press F5
+3. Select: "🌟 All-in-One: Start & Debug"
+4. Wait 10-15 seconds for server to start
+5. Check DAP-TERMINAL for URL (usually http://localhost:5173)
+6. Open browser to that URL
+7. Set breakpoints: <leader>b
+
+That's it! Server starts automatically + debugger attaches.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🐛 WINDOWS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ 404 Error?
+   → Check terminal for ACTUAL URL (might not be :5173)
+   
+❌ "Attach failed"?
+   → Server not running. Use <leader>ds first!
+   
+❌ No breakpoint hits?
+   → Breakpoints only work for SERVER-SIDE code
+   → Use Browser DevTools (F12) for client-side
+
+💡 What to debug where:
+   • Neovim: API calls, +server.ts, backend logic
+   • Browser: DOM, CSS, click handlers, UI
+
+🔧 Keybindings:
+   • <leader>ds = Start dev server
+   • F5 = Start debugging
+   • <leader>b = Toggle breakpoint
+   • F7 = Toggle debug UI
 ]],
           vim.log.levels.INFO,
-          { title = 'Debugging Guide' }
+          { title = 'Web Debugging Guide', timeout = 20000 }
         )
       end,
       desc = 'Debug: Show debugging guide',
+    },
+    {
+      '<leader>dv',
+      function()
+        local js_debug_path = vim.fn.stdpath 'data' .. '/lazy/vscode-js-debug'
+        local vsDebugServer = js_debug_path .. '/out/src/vsDebugServer.js'
+        
+        if vim.loop.fs_stat(vsDebugServer) then
+          vim.notify('✅ vscode-js-debug is properly installed and built!\nLocation: ' .. vsDebugServer, vim.log.levels.INFO, { title = 'JS Debug Check' })
+        else
+          vim.notify('❌ vscode-js-debug NOT built. Building now...\nThis may take 1-2 minutes.', vim.log.levels.WARN, { title = 'JS Debug Check' })
+          
+          -- Rebuild vscode-js-debug
+          local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+          
+          vim.cmd('cd ' .. js_debug_path)
+          
+          if is_windows then
+            vim.fn.system('npm install --force')
+            vim.fn.system('npm run compile vsDebugServerBundle')
+            if vim.fn.isdirectory(js_debug_path .. '/dist') == 1 then
+              vim.fn.system('if exist out rmdir /s /q out')
+              vim.fn.system('move dist out')
+            end
+          else
+            vim.fn.system('npm i && npm run compile vsDebugServerBundle && mv dist out')
+          end
+          
+          -- Check again
+          if vim.loop.fs_stat(vsDebugServer) then
+            vim.notify('✅ Successfully built vscode-js-debug!\nRestart Neovim and try debugging again.', vim.log.levels.INFO, { title = 'JS Debug Build' })
+          else
+            vim.notify('❌ Build failed. Check if Node.js and npm are installed.\nRun: node --version && npm --version', vim.log.levels.ERROR, { title = 'JS Debug Build' })
+          end
+        end
+      end,
+      desc = 'Debug: Verify/Rebuild JS Debugger',
     },
   },
   config = function()
@@ -183,11 +542,13 @@ For server-side (+server.ts, API routes):
     }
 
     --config Javascript/Typescript Debug
-    local js_debug_path = vim.fn.stdpath 'data' .. '/lazy/vscode-js-debug'
+    local js_debug_path = vim.fn.stdpath('data') .. '/lazy/vscode-js-debug'
 
     -- Verify js-debug is built
     local vsDebugServer = js_debug_path .. '/out/src/vsDebugServer.js'
     if vim.loop.fs_stat(vsDebugServer) then
+      vim.notify('✅ JavaScript/TypeScript debugger loaded successfully', vim.log.levels.INFO)
+      
       -- Only configure JS debugging if vscode-js-debug is built
       -- Manually configure adapters (more reliable than dap-vscode-js auto-setup)
       for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
@@ -199,6 +560,10 @@ For server-side (+server.ts, API routes):
             command = 'node',
             args = { vsDebugServer, '${port}' },
           },
+          options = {
+            -- Increase timeout for Windows
+            initialize_timeout_sec = 60,
+          },
         }
       end
 
@@ -207,54 +572,107 @@ For server-side (+server.ts, API routes):
 
       for _, language in ipairs { 'typescript', 'javascript', 'svelte' } do
         require('dap').configurations[language] = {
-          -- Server-side debugging only (no external browser process needed)
+          -- ============================================
+          -- #1: AUTO-START (SELECT THIS FIRST!)
+          -- Starts dev server AND debugger in one click
+          -- ============================================
           {
             type = 'pwa-node',
             request = 'launch',
-            name = '🚀 Debug: Launch File (Node)',
-            program = '${file}',
-            cwd = '${workspaceFolder}',
-            sourceMaps = true,
-            skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
-          },
-          -- Debug npm/yarn scripts (dev, start, etc.)
-          {
-            type = 'pwa-node',
-            request = 'launch',
-            name = '📦 Debug: npm run dev',
+            name = '🌟 #1 All-in-One: Start & Debug (SELECT THIS!)',
             runtimeExecutable = 'npm',
-            runtimeArgs = { 'run', 'dev' },
+            runtimeArgs = { 'run', 'dev-temp' },
             cwd = '${workspaceFolder}',
             sourceMaps = true,
+            protocol = 'inspector',
+            console = 'integratedTerminal',
+            internalConsoleOptions = 'neverOpen',
             resolveSourceMapLocations = {
               '${workspaceFolder}/**',
               '!**/node_modules/**',
             },
             skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
+            restart = true,
+            env = {
+              NODE_ENV = 'development',
+            },
+          },
+          -- ============================================
+          -- #2: MANUAL ATTACH (only if you manually started server!)
+          -- ============================================
+          {
+            type = 'pwa-node',
+            request = 'attach',
+            name = '🔗 #2 Attach Only (server must be running!)',  
+            address = 'localhost',
+            port = 9229,
+            sourceMaps = true,
+            protocol = 'inspector',
+            skipFiles = { '<node_internals>/**', '**/node_modules/**' },
+            resolveSourceMapLocations = {
+              '${workspaceFolder}/**',
+              '!**/node_modules/**',
+            },
+            restart = true,
+            cwd = '${workspaceFolder}',
+            timeout = 30000,
+          },
+          {
+            type = 'pwa-node',
+            request = 'launch',
+            name = '🚀 Start & Debug: npm run dev (Generic)',
+            runtimeExecutable = 'npm',
+            runtimeArgs = { 'run', 'dev' },
+            cwd = '${workspaceFolder}',
+            sourceMaps = true,
             console = 'integratedTerminal',
+            resolveSourceMapLocations = {
+              '${workspaceFolder}/**',
+              '!**/node_modules/**',
+            },
+            skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
             restart = true,
           },
           {
             type = 'pwa-node',
             request = 'launch',
-            name = '📦 Debug: npm start',
+            name = '📦 Start & Debug: npm start',
             runtimeExecutable = 'npm',
             runtimeArgs = { 'start' },
             cwd = '${workspaceFolder}',
             sourceMaps = true,
+            console = 'integratedTerminal',
             resolveSourceMapLocations = {
               '${workspaceFolder}/**',
               '!**/node_modules/**',
             },
             skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
+          },
+          {
+            type = 'pwa-node',
+            request = 'launch',
+            name = '📄 Debug: Current File Only (Node)',
+            program = '${file}',
+            cwd = '${workspaceFolder}',
+            sourceMaps = true,
+            skipFiles = { '<node_internals>/**', '${workspaceFolder}/node_modules/**' },
             console = 'integratedTerminal',
           },
-          -- Server-side debugging: Attach to running Vite/Node server
+          -- ============================================
+          -- ⚙️ ADVANCED - Attach configurations
+          -- Requires dev server already running!
+          -- ============================================
           {
             type = 'pwa-node',
             request = 'attach',
-            name = '⚙️ Debug: Attach to Node/Vite Process',
+            name = '⚙️ ATTACH (Advanced): Running Node Process',
             processId = function()
+              vim.notify(
+                '⚠️  Make sure your dev server is ALREADY RUNNING!\n\n' ..
+                'Start it first with: npm run dev\n' ..
+                'Then select the node.exe process with your project path.',
+                vim.log.levels.WARN
+              )
               return require('dap.utils').pick_process { filter = 'node' }
             end,
             sourceMaps = true,
@@ -269,9 +687,15 @@ For server-side (+server.ts, API routes):
           {
             type = 'pwa-node',
             request = 'attach',
-            name = '🔌 Debug: Attach to Custom Port',
+            name = '🔌 ATTACH (Advanced): Custom Debug Port',
             address = 'localhost',
             port = function()
+              vim.notify(
+                '⚠️  Attach requires server running with --inspect flag!\n\n' ..
+                'Example: NODE_OPTIONS="--inspect" npm run dev\n' ..
+                'Default debug port is 9229',
+                vim.log.levels.WARN
+              )
               local port = vim.fn.input {
                 prompt = 'Enter debug port (default: 9229): ',
                 default = '9229',
@@ -282,7 +706,6 @@ For server-side (+server.ts, API routes):
               return tonumber(port)
             end,
             sourceMaps = true,
-            -- Enhanced source map resolution for SvelteKit/Vite
             resolveSourceMapLocations = {
               '${workspaceFolder}/**',
               '!**/node_modules/**',
@@ -296,28 +719,86 @@ For server-side (+server.ts, API routes):
             skipFiles = { '${workspaceFolder}/node_modules/**/*.js', '<node_internals>/**' },
             restart = true,
             timeout = 60000,
-            -- Enable all debugging features
-            trace = true,
-            verboseDiagnosticLogging = true,
           },
-          -- only if language is javascript, offer this debug action
-          language == 'javascript'
-              and {
-                -- use nvim-dap-vscode-js's pwa-node debug adapter
-                type = 'pwa-node',
-                -- launch a new process to attach the debugger to
-                request = 'launch',
-                -- name of the debug action you have to select for this config
-                name = 'Launch file in new node process',
-                -- launch current file
-                program = '${file}',
-                cwd = '${workspaceFolder}',
+          -- ============================================
+          -- 🌐 BROWSER DEBUGGING - Debug client-side code in Neovim!
+          -- ============================================
+          {
+            type = 'pwa-chrome',
+            request = 'launch',
+            name = '🌐 Launch Chrome: Debug Client-Side Code',
+            url = function()
+              local port = vim.fn.input {
+                prompt = 'Enter dev server port (default: 5173): ',
+                default = '5173',
               }
-            or nil,
+              if port == '' then
+                port = '5173'
+              end
+              return 'http://localhost:' .. port
+            end,
+            sourceMaps = true,
+            protocol = 'inspector',
+            port = 9222,
+            webRoot = '${workspaceFolder}/src',
+            -- Skip Vite HMR files
+            skipFiles = { 
+              '**/node_modules/**/*',
+              '**/@vite/*',
+              '**/src/client/*',
+              '!**/src/**', -- Don't skip our own src files
+            },
+            resolveSourceMapLocations = {
+              '${workspaceFolder}/**',
+              '!**/node_modules/**',
+            },
+          },
+          {
+            type = 'pwa-msedge',
+            request = 'launch',
+            name = '🌐 Launch Edge: Debug Client-Side Code',
+            url = function()
+              local port = vim.fn.input {
+                prompt = 'Enter dev server port (default: 5173): ',
+                default = '5173',
+              }
+              if port == '' then
+                port = '5173'
+              end
+              return 'http://localhost:' .. port
+            end,
+            sourceMaps = true,
+            protocol = 'inspector',
+            port = 9222,
+            webRoot = '${workspaceFolder}/src',
+            skipFiles = { 
+              '**/node_modules/**/*',
+              '**/@vite/*',
+              '**/src/client/*',
+              '!**/src/**',
+            },
+            resolveSourceMapLocations = {
+              '${workspaceFolder}/**',
+              '!**/node_modules/**',
+            },
+          },
         }
       end
     else
-      vim.notify('vscode-js-debug not built. JavaScript/TypeScript debugging disabled.', vim.log.levels.WARN)
+      vim.notify(
+        '❌ vscode-js-debug NOT built!\n\n' ..
+        'JavaScript/TypeScript/Svelte debugging is DISABLED.\n\n' ..
+        'To fix:\n' ..
+        '1. Press <leader>dv to auto-build\n' ..
+        '   OR\n' ..
+        '2. Manually run in terminal:\n' ..
+        '   cd ' .. js_debug_path .. '\n' ..
+        '   npm install\n' ..
+        '   npm run compile vsDebugServerBundle\n\n' ..
+        'Then restart Neovim.',
+        vim.log.levels.WARN,
+        { title = 'JS Debug Setup Required' }
+      )
     end
 
     -- Dap UI setup
@@ -363,19 +844,65 @@ For server-side (+server.ts, API routes):
       dapui.close()
     end
 
-    -- Show helpful tips when attaching to any process
-    dap.listeners.before.attach['show_attach_tips'] = function()
+    -- Show helpful notification when starting JS/TS debugging
+    dap.listeners.after.event_initialized['show_dev_server_url'] = function(session)
+      local config = session.config
+      
+      -- Special message for quick attach configuration
+      if config and config.request == 'attach' and config.port == 9229 then
+        vim.defer_fn(function()
+          vim.notify(
+            '✅ Debugger attached to dev server!\n\n' ..
+            '📍 Check your terminal for the server URL\n' ..
+            '   (Usually http://localhost:5173 or :5000)\n\n' ..
+            '🔧 Now you can:\n' ..
+            '   • Set breakpoints: <leader>b\n' ..
+            '   • Toggle debug UI: F7\n' ..
+            '   • Step through code: F10 (over), F11 (into)\n\n' ..
+            '💡 Open the URL in your browser to trigger breakpoints!',
+            vim.log.levels.INFO,
+            { title = 'Debug Attached Successfully', timeout = 8000 }
+          )
+        end, 1000)
+      -- Message for launch configurations  
+      elseif config and config.runtimeExecutable == 'npm' then
+        vim.defer_fn(function()
+          vim.notify(
+            '🚀 Dev Server Starting...\n\n' ..
+            '📍 Default URLs to try:\n' ..
+            '   • http://localhost:3000\n' ..
+            '   • http://localhost:5173 (Vite)\n' ..
+            '   • http://localhost:5000\n' ..
+            '   • http://localhost:4200 (Angular)\n\n' ..
+            '💡 Check DAP-TERMINAL window for actual URL\n' ..
+            '🔧 Press F7 to toggle debug UI\n' ..
+            '🛑 Set breakpoints with <leader>b',
+            vim.log.levels.INFO,
+            { title = 'Debug Session Started', timeout = 8000 }
+          )
+        end, 2000) -- Wait 2 seconds for server to start
+      end
+    end
+
+    -- Show helpful tips when attaching (if not using quick attach)
+    dap.listeners.before.attach['show_attach_tips'] = function(session, config)
+      -- Don't show for quick attach (port 9229)
+      if config and config.port == 9229 then
+        return
+      end
+      
       vim.notify(
-        '💡 Debug Tips - Finding Your Running Process:\n\n'
-          .. '1. Check your terminal for the port number\n'
-          .. '   Example: "Server running on http://localhost:5000"\n\n'
-          .. '2. Find the process ID (PID):\n'
-          .. '   netstat -ano | findstr :<port>\n'
-          .. '   (Last number in output is the PID)\n\n'
-          .. '3. Verify the process:\n'
-          .. '   tasklist /FI "PID eq <PID>"\n\n'
-          .. '4. Select the matching process from the list',
-        vim.log.levels.INFO,
+        '⚠️  ATTACH MODE - Server must be ALREADY RUNNING!\n\n'
+          .. 'If server is NOT running:\n'
+          .. '1. Press Ctrl+C to cancel\n'
+          .. '2. Press <leader>ds to start server\n'
+          .. '3. Wait 10 seconds\n'
+          .. '4. Press F5 again and select "Quick Attach"\n\n'
+          .. 'Finding process manually:\n'
+          .. '• Check terminal for port (e.g., :5173)\n'
+          .. '• Run: netstat -ano | findstr :<port>\n'
+          .. '• Select node.exe with matching project path',
+        vim.log.levels.WARN,
         { title = 'DAP Attach Mode' }
       )
     end
