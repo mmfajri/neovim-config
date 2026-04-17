@@ -25,6 +25,12 @@ return {
         'vim',
         'vimdoc',
         'razor',
+	'svelte',
+	'typescript',
+	'javascript',
+	'css',
+	'java',
+	'go'
       },
       -- Autoinstall languages that are not installed
       auto_install = true,
