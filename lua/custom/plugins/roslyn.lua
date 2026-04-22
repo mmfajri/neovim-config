@@ -4,7 +4,8 @@ return {
     ft = { 'cs', 'razor' },
     config = function()
       -- Path to manually installed Roslyn LSP
-      local roslyn_path = vim.fn.stdpath 'data' .. '/mason/packages/roslyn/libexec'
+      -- local roslyn_path = vim.fn.stdpath 'data' .. '/mason/packages/roslyn/libexec'
+      local roslyn_path = vim.fn.stdpath 'data' .. '/mason/packages/roslyn-unstable/libexec'
       local roslyn_dll = roslyn_path .. '/Microsoft.CodeAnalysis.LanguageServer.dll'
 
       -- Check if Roslyn is installed
