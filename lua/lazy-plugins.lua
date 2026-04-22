@@ -59,6 +59,8 @@ require('lazy').setup({
 
   require 'custom/plugins/spectre',
 
+  require 'custom.plugins.grugfar',
+
   require 'custom/plugins/roslyn',
 
   require 'custom/plugins/debug-custom',
