@@ -1,57 +1,33 @@
 return {
-  { -- Highlight, edit, and navigate code
+  {
     'nvim-treesitter/nvim-treesitter',
-    -- run = function()
-    --   local ts_update = require('nvim-treesitter.install').update { with_sync = true }
-    --   ts_update()
-    -- end,
+    lazy = false,
     build = ':TSUpdate',
-    main = 'nvim-treesitter.configs', -- Sets main module to use for opts
-    -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
-    opts = {
-      ensure_installed = {
-        'git_config',
-        'yaml',
-        'bash',
-        'c',
-        'c_sharp',
-        'diff',
-        'html',
-        'lua',
-        'luadoc',
-        'markdown',
-        'markdown_inline',
-        'query',
-        'vim',
-        'vimdoc',
-        'razor',
-	'svelte',
-	'typescript',
-	'javascript',
-	'css',
-	'java',
-	'go'
-      },
-      -- Autoinstall languages that are not installed
-      auto_install = true,
-      highlight = {
-        enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
-    },
-    config = function(_, opts)
-      require('nvim-treesitter.install').prefer_git = false
-      require('nvim-treesitter.config').setup(opts)
+
+    config = function()
+      local ts = require 'nvim-treesitter'
+
+      ts.setup {
+        install_dir = vim.fn.stdpath 'data' .. '/site',
+      }
+
+      -- Auto start highlighting
+      vim.api.nvim_create_autocmd('FileType', {
+        callback = function(args)
+          pcall(vim.treesitter.start, args.buf)
+        end,
+      })
+
+      -- Auto install missing parser
+      vim.api.nvim_create_autocmd('FileType', {
+        callback = function()
+          local ft = vim.bo.filetype
+
+          if not vim.tbl_contains(ts.get_installed(), ft) then
+            ts.install { ft }
+          end
+        end,
+      })
     end,
-    -- There are additional nvim-treesitter modules that you can use to interact
-    -- with nvim-treesitter. You should go explore a few and see what interests you:
-    --
-    --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
-    --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
-    --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
 }

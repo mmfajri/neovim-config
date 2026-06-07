@@ -200,12 +200,22 @@ return {
             },
           },
         },
+        ts_ls = {}, -- TypeScript
+        svelte = {},
+        eslint = {},
+        tailwindcss = {},
+        cssls = {},
       }
 
       -- Ensure LSP servers are installed
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Lua code formatter
+        'typescript-language-server',
+        'svelte-language-server',
+        'eslint-lsp',
+        'tailwindcss-language-server',
+        'css-lsp',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -229,7 +239,7 @@ return {
           end,
         },
       }
-      
+
       -- Prevent lspconfig FileType autocmds from starting jdtls
       vim.api.nvim_create_autocmd('FileType', {
         pattern = 'java',
@@ -279,7 +289,7 @@ return {
 
       -- ESLint
       vim.lsp.config('eslint', {
-        filetypes = { 'javascript', 'typescript' },
+        filetypes = { 'javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'svelte' },
         settings = {
           experimental = {
             useFlatConfig = true,
@@ -306,7 +316,7 @@ return {
       })
     end,
   },
-  
+
   -- Java Language Server (JDTLS)
   {
     'mfussenegger/nvim-jdtls',
@@ -317,62 +327,58 @@ return {
       vim.api.nvim_create_autocmd('FileType', {
         pattern = 'java',
         callback = function()
-          local jdtls = require('jdtls')
-          local home = os.getenv('USERPROFILE') or os.getenv('HOME')
-          local jdtls_path = vim.fn.stdpath('data') .. '/mason/packages/jdtls'
-          
+          local jdtls = require 'jdtls'
+          local home = os.getenv 'USERPROFILE' or os.getenv 'HOME'
+          local jdtls_path = vim.fn.stdpath 'data' .. '/mason/packages/jdtls'
+
           -- Check if jdtls is installed
           if vim.fn.isdirectory(jdtls_path) == 0 then
             vim.notify('JDTLS not installed! Run :MasonInstall jdtls', vim.log.levels.ERROR)
             return
           end
-          
+
           -- Check if Java is available
-          if vim.fn.executable('java') == 0 then
+          if vim.fn.executable 'java' == 0 then
             vim.notify('Java not found in PATH! Install JDK 17+', vim.log.levels.ERROR)
             return
           end
-          
+
           -- OS-specific config
           local config_dir = 'config_win'
-          if vim.fn.has('mac') == 1 then
+          if vim.fn.has 'mac' == 1 then
             config_dir = 'config_mac'
-          elseif vim.fn.has('unix') == 1 then
+          elseif vim.fn.has 'unix' == 1 then
             config_dir = 'config_linux'
           end
-          
+
           -- Check if launcher jar exists
           local launcher_jar = vim.fn.glob(jdtls_path .. '/plugins/org.eclipse.equinox.launcher_*.jar')
           if launcher_jar == '' then
             vim.notify('JDTLS launcher not found! Reinstall with :MasonUninstall jdtls then :MasonInstall jdtls', vim.log.levels.ERROR)
             return
           end
-          
+
           -- Use getcwd() as root since user opens nvim from project root
           -- This avoids detecting submodule settings.gradle files
           local root_dir = vim.fn.getcwd()
           local project_name = vim.fn.fnamemodify(root_dir, ':p:h:t')
           local workspace_dir = home .. '/.cache/jdtls/' .. project_name
-          
+
           -- Find Lombok jar from Gradle cache (project uses Lombok)
           -- Use direct path since glob with ** doesn't work reliably
-          local lombok_jar = home .. '/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.32/17d46b3e205515e1e8efd3ee4d57ce8018914163/lombok-1.18.32.jar'
-          
+          local lombok_jar = home
+            .. '/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.32/17d46b3e205515e1e8efd3ee4d57ce8018914163/lombok-1.18.32.jar'
+
           -- Fallback: try to find any lombok jar if specific version not found
           if vim.fn.filereadable(lombok_jar) ~= 1 then
-            local possible_jars = vim.fn.globpath(
-              home .. '/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok',
-              '**/lombok-*.jar',
-              false,
-              true
-            )
+            local possible_jars = vim.fn.globpath(home .. '/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok', '**/lombok-*.jar', false, true)
             if #possible_jars > 0 then
               lombok_jar = possible_jars[1]
             else
               lombok_jar = ''
             end
           end
-          
+
           local cmd_args = {
             'java',
             '-Declipse.application=org.eclipse.jdt.ls.core.id1',
@@ -382,15 +388,17 @@ return {
             '-Dlog.level=ALL',
             '-Xmx1g',
             '--add-modules=ALL-SYSTEM',
-            '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+            '--add-opens',
+            'java.base/java.util=ALL-UNNAMED',
+            '--add-opens',
+            'java.base/java.lang=ALL-UNNAMED',
           }
-          
+
           -- Add Lombok agent if found
           if lombok_jar ~= '' and vim.fn.filereadable(lombok_jar) == 1 then
             table.insert(cmd_args, '-javaagent:' .. lombok_jar)
           end
-          
+
           -- Add JDTLS jar and config
           table.insert(cmd_args, '-jar')
           table.insert(cmd_args, launcher_jar)
@@ -398,7 +406,7 @@ return {
           table.insert(cmd_args, jdtls_path .. '/' .. config_dir)
           table.insert(cmd_args, '-data')
           table.insert(cmd_args, workspace_dir)
-          
+
           local config = {
             cmd = cmd_args,
             root_dir = root_dir,
@@ -417,7 +425,7 @@ return {
             init_options = { bundles = {} },
             capabilities = require('blink.cmp').get_lsp_capabilities(),
           }
-          
+
           jdtls.start_or_attach(config)
         end,
       })
