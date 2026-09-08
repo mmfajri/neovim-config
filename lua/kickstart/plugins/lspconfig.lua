@@ -151,6 +151,10 @@ return {
               callback = vim.lsp.buf.clear_references,
             })
           end
+
+          if client and client:supports_method 'textDocument/documentSymbol' then
+            require('nvim-navic').attach(client, event.buf)
+          end
         end,
       })
 

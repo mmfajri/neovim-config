@@ -65,6 +65,9 @@ require('lazy').setup({
 
   require 'custom/plugins/debug-custom',
 
+  require 'custom/plugins/nugget_package',
+
+  require 'custom/plugins/barbecue',
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   --
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
